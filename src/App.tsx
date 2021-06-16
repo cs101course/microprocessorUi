@@ -1,6 +1,8 @@
 import "react";
 import { useEffect, useReducer, useRef, useState } from "react";
 
+
+
 import { ProcessorState, assemble, Processor } from "@cs101/microprocessor";
 import * as React from "react";
 import { Processor as P, ProcessorState as PS } from "@cs101/microprocessor/dist/types";
@@ -11,6 +13,7 @@ import { Speaker } from "@cs101/microprocessor/dist/peripherals/speaker";
 import { getSourceMap } from "@cs101/microprocessor/dist/assembler/assembler";
 
 import "./App.css";
+import { playAudioBuffer, playSound } from "./audio";
 type TextChangeHandler = (text: string) => void;
 
 
@@ -27,7 +30,7 @@ interface Action {
 const measureText = (() => {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-  
+
   return (text: string, font: string) => {
     ctx.font = font;
     return ctx.measureText(text);
@@ -40,17 +43,26 @@ interface CodeInputProps {
   onChange: TextChangeHandler;
 }
 const CodeInput: React.FC<CodeInputProps> = ({ text, highlight, onChange }) => {
+  const textAreaRef = useRef<HTMLTextAreaElement>();
+  const [scrollTop, setScrollTop] = useState(textAreaRef.current?.scrollTop || 0);
+
   const lineHeight = 18;
   const hPadding = 4;
   const vPadding = 4;
   const font = "16px monospace";
   const charWidth = measureText("X", font).width;
   const cursorWidth = charWidth * 2;
+
+  const handleScrollChange = (evt: React.UIEvent<HTMLTextAreaElement>) => {
+    setScrollTop(textAreaRef.current.scrollTop);
+    console.log(textAreaRef.current.scrollTop, scrollTop);
+  };
+
   return <div className="codeContainer">
     {highlight &&
-      <div className="highlightBg" style={{ width: cursorWidth + "px", height: lineHeight + "px", top: vPadding + (highlight[0] * lineHeight) + "px", left: (hPadding - 1) + (highlight[1] * charWidth) + "px" }}></div>
+      <div className="highlightBg" style={{ width: cursorWidth + "px", height: lineHeight + "px", top: vPadding + (highlight[0] * lineHeight) - scrollTop + "px", left: (hPadding - 1) + (highlight[1] * charWidth) + "px" }}></div>
     }
-    <textarea placeholder="Instructions" className="code" style={{lineHeight, font, paddingLeft: hPadding, paddingTop: vPadding, paddingRight: hPadding, paddingBottom: vPadding}} value={text} onChange={(evt) => onChange(evt.currentTarget.value)}></textarea>
+    <textarea ref={textAreaRef} onScroll={handleScrollChange} placeholder="Instructions" className="code" style={{ lineHeight, font, paddingLeft: hPadding, paddingTop: vPadding, paddingRight: hPadding, paddingBottom: vPadding }} value={text} onChange={(evt) => onChange(evt.currentTarget.value)}></textarea>
   </div>;
 };
 
@@ -62,7 +74,7 @@ interface PixelDisplayProps {
   pixelSize?: number;
 };
 
-const PixelDisplayOutput: React.FC<PixelDisplayProps> = ({ pixels, pixelUpdates, width, height, pixelSize=2 }) => {
+const PixelDisplayOutput: React.FC<PixelDisplayProps> = ({ pixels, pixelUpdates, width, height, pixelSize = 2 }) => {
   const canvasRef = useRef<HTMLCanvasElement>();
 
   useEffect(() => {
@@ -74,7 +86,7 @@ const PixelDisplayOutput: React.FC<PixelDisplayProps> = ({ pixels, pixelUpdates,
     const context2d = canvasRef.current.getContext('2d');
     context2d.fillStyle = "#ffffff";
     context2d.fillRect(0, 0, width * pixelSize, height * pixelSize);
-    
+
     for (let i = 0; i < pixels.length; i++) {
       context2d.fillStyle = pixels[i].hexString;
       context2d.fillRect((i % width) * pixelSize, Math.floor(i / width) * pixelSize, pixelSize, pixelSize);
@@ -101,12 +113,17 @@ const reduceState = (state: PS<SupportedPeripherals>, action: Action | string) =
 
   if (action.name === "step") {
 
+
     if (action.steps) {
       for (let i = 0; i < action.steps; i++) {
         Processor.step(ps);
       }
     } else {
+      const audioLength = state.state.peripherals.audioBuffer.length;
       Processor.step(ps);
+      if (audioLength !== state.state.peripherals.audioBuffer.length) {
+        playSound(state.state.peripherals.audioBuffer[state.state.peripherals.audioBuffer.length - 1]);
+      }
     }
   } else if (action.name === "reset") {
     ProcessorState.reset(ps);
@@ -121,7 +138,11 @@ const reduceState = (state: PS<SupportedPeripherals>, action: Action | string) =
     ProcessorState.setMemory(ps, action.program);
   } else if (action.name === "next") {
     do {
+      const audioLength = state.state.peripherals.audioBuffer.length;
       Processor.step(ps);
+      if (audioLength !== state.state.peripherals.audioBuffer.length) {
+        playSound(state.state.peripherals.audioBuffer[state.state.peripherals.audioBuffer.length - 1]);
+      }
     } while (ps.state.pipelineStep !== 0);
   }
 
@@ -172,6 +193,7 @@ export const App = ({
   const [code, setCode] = useState("");
   const [sourceMap, setSourceMap] = useState<Record<number, [number, number]>>({});
   const [runtime, setRuntime] = useState(null);
+  const [audioPlayer, setAudioPlayer] = useState(null);
   const [ps, dispatch] = useReducer(reduceState, {}, () => newProcessorState(processor));
 
   const onAssembleClick = () => {
@@ -219,6 +241,17 @@ export const App = ({
     }
   };
 
+  const playAudio = () => {
+    if (audioPlayer) {
+      clearInterval(audioPlayer);
+      setAudioPlayer(null);
+    } else {
+      setAudioPlayer(
+        playAudioBuffer(ps.state.peripherals.audioBuffer)
+      );
+    }
+  };
+
   // clean up
   useEffect(() => {
     return () => stop(runtime);
@@ -251,7 +284,7 @@ export const App = ({
       <button type="button" onClick={onAssembleClick}>Upload</button>
       <button type="button" onClick={onStepClick}>Step</button>
       <button type="button" onClick={onNextClick}>Next</button>
-      <button type="button" onClick={onRunClick}>{ runtime ? "Stop" : "Run" }</button>
+      <button type="button" onClick={onRunClick}>{runtime ? "Stop" : "Run"}</button>
       <button type="button" onClick={onResetClick}>Clear</button>
       <div className="status">
         <div className="stepName">{statusLabels[ps.state.pipelineStep]}</div>
@@ -289,12 +322,19 @@ export const App = ({
     </div>
     <div className="peripherals">
       <textarea className="lcd" placeholder="Output LCD" value={ps.state.peripherals.lcdOutput} readOnly></textarea>
-      <div className="sounds">
-        {
-          ps.state.peripherals.audioBuffer && ps.state.peripherals.audioBuffer.join(" ")
-        }
-      </div>
-      <PixelDisplayOutput width={256} height={256} pixels={ps.state.peripherals.pixels} pixelUpdates={ps.state.peripherals.pixelUpdates} />
+
+      {ps.state.peripherals.audioBuffer && ps.state.peripherals.audioBuffer.length > 0 && (
+        <div className="sounds">
+          Audio Buffer:
+          <pre>{
+            ps.state.peripherals.audioBuffer && ps.state.peripherals.audioBuffer.join(" ")
+          }</pre>
+          <button type="button" className="playAudio" onClick={playAudio}>{audioPlayer === null ? "Play" : "Stop"}</button>
+        </div>
+      )}
+      {ps.state.peripherals.pixelUpdates > 0 && (
+        <PixelDisplayOutput width={256} height={256} pixels={ps.state.peripherals.pixels} pixelUpdates={ps.state.peripherals.pixelUpdates} />
+      )}
     </div>
     <div className="instructionSet">
       <span className="isTitle">Instruction Set:</span>
