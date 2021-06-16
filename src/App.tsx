@@ -59,7 +59,7 @@ const CodeInput: React.FC<CodeInputProps> = ({ text, highlight, onChange }) => {
   };
 
   return <div className="codeContainer">
-    {highlight &&
+    {highlight && false && // TODO FIXME
       <div className="highlightBg" style={{ width: cursorWidth + "px", height: lineHeight + "px", top: vPadding + (highlight[0] * lineHeight) - scrollTop + "px", left: (hPadding - 1) + (highlight[1] * charWidth) + "px" }}></div>
     }
     <textarea ref={textAreaRef} onScroll={handleScrollChange} placeholder="Instructions" className="code" style={{ lineHeight, font, paddingLeft: hPadding, paddingTop: vPadding, paddingRight: hPadding, paddingBottom: vPadding }} value={text} onChange={(evt) => onChange(evt.currentTarget.value)}></textarea>
@@ -231,7 +231,7 @@ export const App = ({
 
           dispatch({
             name: "step",
-            steps: 256
+            steps: 1024
           });
           return true;
         }
