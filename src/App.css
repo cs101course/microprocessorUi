@@ -1,18 +1,24 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
 .memory8bit {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));  
+  grid-template-columns: repeat(8, minmax(74px, 1fr));  
 }
 
 .memory4bit {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));  
+  grid-template-columns: repeat(4, minmax(74px, 1fr));  
 }
 
 .memory {
   font-family: Consolas, Lucida Console, monospace;
   max-height: 400px;
   overflow: auto;
-  border: 1px solid #eee;
+  border-top: 1px solid #aaa;
+  border-left: 1px solid #aaa;
 }
 
 .memory8bit > div:nth-child(16n + 9),
@@ -24,43 +30,47 @@
 .memory8bit > div:nth-child(16n + 15),
 .memory8bit > div:nth-child(16n + 16)
 {
-  background-color: #eee;
+  background-color: #fff;
 }
 
 .registers {
   font-family: Consolas, Lucida Console, monospace;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);  
+  display: flex;
+  flex-wrap: wrap;
+
+  border-left: 1px solid #ccc;
 }
 
 .memory label, .registers label {
-  display: block;
   font-size: 0.75rem;
 }
 
+.memoryIcons {
+  float: right;
+  width: 20px;
+  height: 36px;
+  font-size: 14px;
+}
+
 .memoryPanel, .registersPanel {
-  display: inline-block;
+  display: block;
   padding: 12px;
+}
+
+.memoryPanel span, .registersPanel span {
+  font-family: Consolas, Lucida Console, monospace;
 }
 
 .memoryContainer, .registerContainer {
   padding: 4px;
+
+  border-right: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
 }
 
-.codeContainer {
-  width: 100%;
-  height: 300px;
-  position: relative;
-  overflow: hidden;
-}
-
-.highlightBg {
-  position: absolute;
-  background: rgb(221,219,255);
-  background: linear-gradient(90deg, rgba(221,219,255,1) 0%, rgba(221,219,255,1) 50%, rgba(255,255,255,0) 100%);
-  width: 100px;
-  height: 100px;
-  border-left: 1px solid #aaaaff;
+.registerContainer {
+  border-top: 1px solid #ccc;
+  min-width: 65px;
 }
 
 .lcd {
@@ -78,39 +88,106 @@
   outline: 1px solid #eee;
 }
 
-.code {
-  position: relative;
-  background: rgba(255, 255, 255, 0);
-  width: 100%;
-  height: 300px;
+.codeContainer {
+  font-family: monospace;
+  overflow: auto;
+  resize: vertical;
+  padding: 6px;
+  padding-bottom: 12px;
+  background-color: #eee;
   box-sizing: border-box;
-  border: 1px solid #eee;
+  border-bottom: 1px solid #888;
+  border-left: 1px solid #888;
+  border-right: 1px solid #888;
+  max-height: 300px;
 }
 
-.code:focus {
-  outline: 1px solid #eee;
+.uploadButton {
+  height: 40px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.code {
+  width: 100%;
+  border: 1px solid #aaa;
+  background-color: white;
+}
+
+.code-highlight {
+  background-color: lightblue;
+}
+
+.code-label {
+  color: darkred;
+  background-color: lightgray;
+}
+
+.code-labelref {
+  color: darkred;
+}
+
+.code-mnemonic {
+  color: darkblue;
+  font-weight: bold;
+}
+
+.code-comment {
+  color: #444;
 }
 
 .codePanel {
-  padding-top: 48px;
+  background-color: white;
+}
+
+.codePanel button {
+  margin: 6px;
+  margin-left: 4px;
+  cursor: pointer;
+}
+
+.underTheHood {
+  border: 1px solid #666;
+  background-color: #eee;
+  margin-top: 40px;
+  max-width: 640px;
+  box-sizing: border-box;
 }
 
 .toolbar {
-  top: 0px;
-  left: 0px;
-  z-index: 10;
   width: 100%;
-  height: 32px;
-  padding: 4px;
+  padding: 0;
   margin: 0;
   background-color: #eee;
-  border-bottom: 1px solid #444;;
-  position: fixed;
+  
+  box-sizing: border-box;
+  border-top: 1px solid #888;
+  border-left: 1px solid #888;
+  border-right: 1px solid #888;
 }
 
-.toolbar button {
-  margin-left: 4px;
+.toolbar .buttons {
+  display: flex;
+  max-width: 640px;
+  flex-wrap: wrap;
+}
+
+.toolbar .buttons button {
+  margin-left: 2px;
+  margin-right: 2px;
   cursor: pointer;
+  height: 40px;
+  flex: 1;
+}
+
+.toolbar .buttons button i {
+  font-size: 18px;
+  display: block;
+  margin: 2px;
+}
+
+.uploadButton i {
+  font-size: 18px;
 }
 
 .status {
@@ -125,15 +202,26 @@
   padding-left: 20px;
 }
 
+.chooseProcessor {
+  padding: 6px;
+  width: 100%;
+}
+
 .instructionSet {
   padding-top: 32px;
   font-family: monospace;
 }
 
+.isTitle {
+  font-size: 16px;
+  padding: 6px;
+  padding-bottom: 12px;
+  display: inline-block;
+}
+
 .instructionSet table {
   font-family: monospace;
   width: 100%;
-  margin: 10px;
 }
 
 .instructionSet table { border: none; border-collapse: collapse; }
@@ -145,22 +233,18 @@
 .instructionSet table th {
   background-color: #fff;
   font-weight: bold;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 
 
-.instructionSet .isNo {
-  width: 120px;
-}
 
-.instructionSet .isIpInc {
-  width: 120px;
-}
 
 .sounds {
   font-family: monospace;
   border: 1px solid #eee;
   margin-top: 16px;
-  width: 640px;
+  max-width: 640px;
 }
 
 .pixelDisplay {
@@ -173,11 +257,105 @@
 }
 
 .sounds pre {
-  width: 640px;
+  max-width: 640px;
   font-family: monospace;
   overflow: auto;
 }
 
 .playAudio {
   cursor: pointer;
+}
+
+.memoryContainerBp, .register-BP {
+  background-color: pink !important;
+}
+
+.memoryContainerSp, .register-SP {
+  background-color: rgb(255, 255, 151) !important;
+}
+
+.memoryContainerIp, .register-IP {
+  background-color: lightblue !important;
+}
+
+.memoryContainerIp label {
+  font-weight: bold;
+}
+
+.register, .memoryCell {
+  border: 1px solid #888;
+  font-family: monospace;
+  font-size: 16px;
+}
+
+.floatingSection {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  width: 100%;
+}
+
+.uploadRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.gamePad {
+  display: inline-block;
+  margin: 4px;
+}
+
+.leftPad, .rightPad {
+  display: inline-block;
+  position: relative;
+  width: 54px;
+}
+.gamePad button {
+  margin: 0;
+  padding: 0;
+}
+
+.gamePad .pad-w, .gamePad .pad-s, .gamePad .pad-ArrowUp, .gamePad .pad-ArrowDown {
+  width: 12px;
+  height: 14px;
+}
+
+.gamePad .pad-a, .gamePad .pad-d, .gamePad .pad-ArrowLeft, .gamePad .pad-ArrowRight {
+  width: 14px;
+  height: 12px;
+}
+
+.gamePad .pad-w, .gamePad .pad-ArrowUp {
+  position: absolute;
+  top: 1px;
+  right: 16px;
+}
+
+.gamePad .pad-a, .gamePad .pad-ArrowLeft {
+  position: absolute;
+  top: 15px;
+  right: 28px;
+}
+
+.gamePad .pad-s, .gamePad .pad-ArrowDown {
+  position: absolute;
+  top: 26px;
+  right: 16px;
+}
+
+.gamePad .pad-d, .gamePad .pad-ArrowRight {
+  position: absolute;
+  top: 15px;
+  right: 2px;
+}
+
+@media screen and (max-width: 640px) {
+  .toolbarLabel {
+    display: none;
+  }
+
+  .lcd {
+    width: 100%;
+  }
 }

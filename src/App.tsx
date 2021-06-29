@@ -1,153 +1,21 @@
-import "react";
-import { useEffect, useReducer, useRef, useState } from "react";
-
-
-
-import { ProcessorState, assemble, Processor } from "@cs101/microprocessor";
 import * as React from "react";
-import { Processor as P, ProcessorState as PS } from "@cs101/microprocessor/dist/types";
-import { Lcd } from "@cs101/microprocessor/dist/peripherals/lcd";
-import { Pixel, PixelDisplay } from "@cs101/microprocessor/dist/peripherals/pixelDisplay";
-import { Fire } from "@cs101/microprocessor/dist/peripherals/fire";
-import { Speaker } from "@cs101/microprocessor/dist/peripherals/speaker";
+import { useEffect, useReducer, useState } from "react";
+
+import { ProcessorState, assemble } from "@cs101/microprocessor";
+
+import { Processor as P } from "@cs101/microprocessor/dist/types";
 import { getSourceMap } from "@cs101/microprocessor/dist/assembler/assembler";
 
 import "./App.css";
-import { playAudioBuffer, playSound } from "./audio";
-type TextChangeHandler = (text: string) => void;
-
-
-interface Action {
-  name: "step" | "reset" | "setRegister" | "setMemoryAddress" | "setProgram";
-  register?: string;
-  address?: number;
-  value?: number;
-  program?: Array<number>;
-  steps?: number;
-}
-
-
-const measureText = (() => {
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-
-  return (text: string, font: string) => {
-    ctx.font = font;
-    return ctx.measureText(text);
-  };
-})();
-
-interface CodeInputProps {
-  text: string;
-  highlight?: [number, number];
-  onChange: TextChangeHandler;
-}
-const CodeInput: React.FC<CodeInputProps> = ({ text, highlight, onChange }) => {
-  const textAreaRef = useRef<HTMLTextAreaElement>();
-  const [scrollTop, setScrollTop] = useState(textAreaRef.current?.scrollTop || 0);
-
-  const lineHeight = 18;
-  const hPadding = 4;
-  const vPadding = 4;
-  const font = "16px monospace";
-  const charWidth = measureText("X", font).width;
-  const cursorWidth = charWidth * 2;
-
-  const handleScrollChange = (evt: React.UIEvent<HTMLTextAreaElement>) => {
-    setScrollTop(textAreaRef.current.scrollTop);
-    console.log(textAreaRef.current.scrollTop, scrollTop);
-  };
-
-  return <div className="codeContainer">
-    {highlight && false && // TODO FIXME
-      <div className="highlightBg" style={{ width: cursorWidth + "px", height: lineHeight + "px", top: vPadding + (highlight[0] * lineHeight) - scrollTop + "px", left: (hPadding - 1) + (highlight[1] * charWidth) + "px" }}></div>
-    }
-    <textarea ref={textAreaRef} onScroll={handleScrollChange} placeholder="Instructions" className="code" style={{ lineHeight, font, paddingLeft: hPadding, paddingTop: vPadding, paddingRight: hPadding, paddingBottom: vPadding }} value={text} onChange={(evt) => onChange(evt.currentTarget.value)}></textarea>
-  </div>;
-};
-
-interface PixelDisplayProps {
-  pixels: Array<Pixel>;
-  pixelUpdates: number;
-  width: number;
-  height: number;
-  pixelSize?: number;
-};
-
-const PixelDisplayOutput: React.FC<PixelDisplayProps> = ({ pixels, pixelUpdates, width, height, pixelSize = 2 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>();
-
-  useEffect(() => {
-    canvasRef.current.width = width * pixelSize;
-    canvasRef.current.height = height * pixelSize;
-  }, [width, height]);
-
-  useEffect(() => {
-    const context2d = canvasRef.current.getContext('2d');
-    context2d.fillStyle = "#ffffff";
-    context2d.fillRect(0, 0, width * pixelSize, height * pixelSize);
-
-    for (let i = 0; i < pixels.length; i++) {
-      context2d.fillStyle = pixels[i].hexString;
-      context2d.fillRect((i % width) * pixelSize, Math.floor(i / width) * pixelSize, pixelSize, pixelSize);
-    }
-  }, [pixelUpdates]);
-
-  return <canvas className="pixelDisplay" ref={canvasRef} />
-};
-
-type SupportedPeripherals = Lcd & PixelDisplay & Fire & Speaker;
-
-const newProcessorState = (processor: P<SupportedPeripherals>) => ({
-  processor,
-  state: ProcessorState.newState(processor)
-});
-
-const reduceState = (state: PS<SupportedPeripherals>, action: Action | string) => {
-  const ps = state;
-  if (typeof action === "string") {
-    action = {
-      name: action as "step" | "reset"
-    };
-  }
-
-  if (action.name === "step") {
-
-
-    if (action.steps) {
-      for (let i = 0; i < action.steps; i++) {
-        Processor.step(ps);
-      }
-    } else {
-      const audioLength = state.state.peripherals.audioBuffer.length;
-      Processor.step(ps);
-      if (audioLength !== state.state.peripherals.audioBuffer.length) {
-        playSound(state.state.peripherals.audioBuffer[state.state.peripherals.audioBuffer.length - 1]);
-      }
-    }
-  } else if (action.name === "reset") {
-    ProcessorState.reset(ps);
-  } else if (action.name === "setRegister") {
-    console.log("set", action.register, action.value);
-    ProcessorState.setRegister(ps, action.register, action.value);
-    console.log(ps);
-  } else if (action.name === "setMemoryAddress") {
-    ProcessorState.setMemoryAddress(ps, action.address, action.value);
-  } else if (action.name === "setProgram") {
-    ProcessorState.reset(ps);
-    ProcessorState.setMemory(ps, action.program);
-  } else if (action.name === "next") {
-    do {
-      const audioLength = state.state.peripherals.audioBuffer.length;
-      Processor.step(ps);
-      if (audioLength !== state.state.peripherals.audioBuffer.length) {
-        playSound(state.state.peripherals.audioBuffer[state.state.peripherals.audioBuffer.length - 1]);
-      }
-    } while (ps.state.pipelineStep !== 0);
-  }
-
-  return { ...ps };
-};
+import { playAudioBuffer } from "./audio";
+import { InstructionSet } from "./components/InstructionSet";
+import { SupportedPeripherals, supportsAudio, supportsLcd, supportsPixels, supportsRobot } from "./types";
+import { CodeInput } from "./components/CodeInput";
+import { PixelDisplayOutput } from "./components/PixelDisplayOutput";
+import { startRunning, stopRunning } from "./runtime";
+import { newProcessorState, reduceState } from "./reducer";
+import { GamePad } from "./components/Gamepad";
+import { RobotDisplay } from "./components/Robot";
 
 const statusLabels = [
   "Fetch",
@@ -155,75 +23,74 @@ const statusLabels = [
   "Execute"
 ];
 
-interface Runtime {
-  isRunning: boolean;
-}
-
-const start = (step: () => boolean) => {
-  const runtime: Runtime = {
-    isRunning: true
-  };
-
-  const runner = () => {
-    if (runtime.isRunning && step()) {
-      requestAnimationFrame(runner);
-    }
-  };
-  runner();
-
-  return runtime;
-};
-
-const stop = (runtime: Runtime | null): null => {
-  if (runtime) {
-    runtime.isRunning = false;
-  }
-
-  return null;
-}
-
 export interface AppProps {
-  processor: P<SupportedPeripherals>;
+  processors: Array<P<SupportedPeripherals>>;
 }
 
 export const App = ({
-  processor,
-
+  processors,
 }: AppProps) => {
+  const floatingRef = React.useRef<HTMLDivElement>();
+  const [processorIndex, setProcessorIndex] = useState(processors.length - 1);
   const [code, setCode] = useState("");
   const [sourceMap, setSourceMap] = useState<Record<number, [number, number]>>({});
   const [runtime, setRuntime] = useState(null);
   const [audioPlayer, setAudioPlayer] = useState(null);
-  const [ps, dispatch] = useReducer(reduceState, {}, () => newProcessorState(processor));
+  const [error, setError] = useState<string | null>(null);
+  const [ps, dispatch] = useReducer(reduceState, {}, () => newProcessorState(processors[processorIndex]));
+
+  const processor = processors[processorIndex];
+
+  useEffect(() => {
+    if (ps.state.isHalted && runtime) {
+      setRuntime(stopRunning(runtime));
+    }
+  }, [runtime, ps]);
+
+  const onCodeChange = (text: string) => {
+    setCode(text);
+    setSourceMap({});
+  };
 
   const onAssembleClick = () => {
-    const program = assemble(processor, code);
-    setRuntime(stop(runtime));
-    setSourceMap(getSourceMap(code));
-    dispatch({
-      name: "setProgram",
-      program
-    });
+    try {
+      const program = assemble(processor, code);
+      const programSourceMap = getSourceMap(code);
+
+      setRuntime(stopRunning(runtime));
+      setSourceMap(programSourceMap);
+      dispatch({
+        name: "setProgram",
+        program
+      });
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const onResetClick = () => {
-    setRuntime(stop(runtime));
+    setRuntime(stopRunning(runtime));
     dispatch("reset");
   };
 
   const onStepClick = () => {
-    setRuntime(stop(runtime));
+    setRuntime(stopRunning(runtime));
     dispatch("step");
   };
 
   const onNextClick = () => {
-    setRuntime(stop(runtime));
+    setRuntime(stopRunning(runtime));
     dispatch("next");
   };
 
-  const onRunClick = () => {
+  const onStopClick = () => {
+    setRuntime(stopRunning(runtime));
+  };
+
+  const onRunFastestClick = () => {
     if (!runtime) {
-      setRuntime(start(
+      setRuntime(startRunning(
         () => {
           if (ps.state.isHalted) {
             return false;
@@ -237,11 +104,52 @@ export const App = ({
         }
       ));
     } else {
-      setRuntime(stop(runtime));
+      setRuntime(stopRunning(runtime));
+    }
+  };
+
+  const onRunFastClick = () => {
+    if (!runtime) {
+      setRuntime(startRunning(
+        () => {
+          if (ps.state.isHalted) {
+            return false;
+          }
+
+          dispatch({
+            name: "step",
+            steps: 512
+          });
+          return true;
+        }
+      ));
+    } else {
+      setRuntime(stopRunning(runtime));
+    }
+  };
+
+  const onRunClick = () => {
+    if (!runtime) {
+      setRuntime(startRunning(
+        () => {
+          if (ps.state.isHalted) {
+            return false;
+          }
+
+          dispatch("step");
+          return true;
+        }
+      ));
+    } else {
+      setRuntime(stopRunning(runtime));
     }
   };
 
   const playAudio = () => {
+    if (!supportsAudio(ps)) {
+      return;
+    }
+
     if (audioPlayer) {
       clearInterval(audioPlayer);
       setAudioPlayer(null);
@@ -254,11 +162,10 @@ export const App = ({
 
   // clean up
   useEffect(() => {
-    return () => stop(runtime);
+    return () => stopRunning(runtime);
   }, [runtime]);
 
   const onRegisterChange = function (evt: React.ChangeEvent<HTMLInputElement>) {
-    console.log("Change", this, Number(evt.currentTarget.value));
     dispatch({
       name: "setRegister",
       register: this,
@@ -267,7 +174,6 @@ export const App = ({
   };
 
   const onMemoryChange = function (evt: React.ChangeEvent<HTMLInputElement>) {
-    console.log("Change addr", this, Number(evt.currentTarget.value));
     dispatch({
       name: "setMemoryAddress",
       address: this,
@@ -275,89 +181,213 @@ export const App = ({
     });
   };
 
+  const onProcessorChange = function (evt: React.ChangeEvent<HTMLSelectElement>) {
+    const index = Number(evt.currentTarget.value);
+
+    setProcessorIndex(index);
+
+    dispatch({
+      name: "reset",
+      processor: processors[index]
+    });
+  };
+
+  const keyBits: Record<string, number> = {
+    "w": 0,
+    "a": 1,
+    "s": 2,
+    "d": 3,
+    "ArrowUp": 4,
+    "ArrowLeft": 5,
+    "ArrowDown": 6,
+    "ArrowRight": 7
+  };
+
+  const onButtonDown = (button: keyof typeof keyBits) => {
+    if (keyBits[button] !== undefined) {
+      dispatch({
+        name: "setRegister",
+        register: "PORT",
+        value: (ProcessorState.getRegister(ps, "PORT") | (1 << keyBits[button]))
+      });
+    }
+  };
+
+  const onKeyDown = (evt: React.KeyboardEvent<HTMLElement>) => {
+    evt.preventDefault();
+
+    if (evt.repeat) {
+      return;
+    }
+
+    if (keyBits[evt.key] !== undefined) {
+      dispatch({
+        name: "setRegister",
+        register: "PORT",
+        value: (ProcessorState.getRegister(ps, "PORT") | (1 << keyBits[evt.key]))
+      });
+    }
+  };
+
+  const onKeyUp = (evt: React.KeyboardEvent<HTMLElement>) => {
+    if (keyBits[evt.key] !== undefined) {
+      dispatch({
+        name: "setRegister",
+        register: "PORT",
+        value: (ProcessorState.getRegister(ps, "PORT") & ~(1 << keyBits[evt.key]))
+      });
+    }
+  };
+
+  const onButtonUp = (button: keyof typeof keyBits) => {
+    if (keyBits[button] !== undefined) {
+      dispatch({
+        name: "setRegister",
+        register: "PORT",
+        value: (ProcessorState.getRegister(ps, "PORT") & ~(1 << keyBits[button]))
+      });
+    }
+  };
+
   const memoryBitClass = `memory${ps.processor.memoryBitSize}bit`;
   const inputSize = Math.log2(ps.processor.memoryBitSize);
   const highlight = sourceMap[ProcessorState.getIp(ps)];
+  const memoryContainerClass = (address: number) => {
+    const classNames = ["memoryContainer"];
+
+    if (ProcessorState.getIp(ps) === address) {
+      classNames.push("memoryContainerIp");
+    }
+
+    if (ps.processor.registerNames.includes("SP") && ProcessorState.getRegister(ps, "SP") === address) {
+      classNames.push("memoryContainerSp");
+    }
+
+    if (ps.processor.registerNames.includes("BP") && ProcessorState.getRegister(ps, "BP") === address) {
+      classNames.push("memoryContainerBp");
+    }
+
+    return classNames.join(" ");
+  };
+  const memoryIcons = (address: number) => {
+    const icons = [];
+
+    const stack = (key: string) => <i key={key} className="las la-layer-group"></i>;
+    const ip = (key: string) => <i key={key} className="las la-hand-point-left"></i>;
+    const bp = (key: string) => <i key={key} className="las la-download"></i>;
+
+
+    if (ProcessorState.getIp(ps) === address) {
+      icons.push(ip);
+    }
+
+    if (ps.processor.registerNames.includes("SP") && ProcessorState.getRegister(ps, "SP") === address) {
+      icons.push(stack);
+    }
+
+    if (ps.processor.registerNames.includes("BP") && ProcessorState.getRegister(ps, "BP") === address) {
+      icons.push(bp);
+    }
+
+    if (icons.length !== 0) {
+      return <>{icons.map((icon, index) => icon(index.toString()))}</>;
+    } else {
+      return null;
+    }
+  };
+
+  const floatingHeight = floatingRef.current ? floatingRef.current.clientHeight + 20 : 199;
 
   return <div>
-    <div className="toolbar">
-      <button type="button" onClick={onAssembleClick}>Upload</button>
-      <button type="button" onClick={onStepClick}>Step</button>
-      <button type="button" onClick={onNextClick}>Next</button>
-      <button type="button" onClick={onRunClick}>{runtime ? "Stop" : "Run"}</button>
-      <button type="button" onClick={onResetClick}>Clear</button>
-      <div className="status">
-        <div className="stepName">{statusLabels[ps.state.pipelineStep]}</div>
-        <div className="cycleNumber">Cycle: <strong>{ps.state.executionStep}</strong></div>
-        <div className="haltedStatus">{ps.state.isHalted && "Halted"}</div>
-      </div>
-    </div>
-    <div className="codePanel">
-      <CodeInput highlight={highlight} text={code} onChange={(text: string) => { setCode(text); setSourceMap({}); }} />
-    </div>
-    <div className="underTheHood">
-      <div className="memoryPanel">
-        <div className={`memory ${memoryBitClass}`}>
-          {ps.state.memory
-            .filter((_, index) => index < ps.processor.numMemoryAddresses)
-            .map((value, address) => (
-              <div key={address} className="memoryContainer">
-                <label>{address}</label>
-                <input size={inputSize} type="text" className="memoryCell" value={value} onChange={onMemoryChange.bind(address)} />
-              </div>
-            ))
-          }
+    <div className="floatingSection" ref={floatingRef}>
+      <div className="toolbar">
+        <div className="chooseProcessor">
+          <select onChange={onProcessorChange} value={processorIndex}>
+            {processors.map((processor, index) => (
+              <option value={index} key={index}>{processor.name || "Untitled"}</option>
+            ))}
+          </select>
         </div>
-      </div>
-      <div className="registersPanel">
-        <div className="registers">
-          {ps.processor.registerNames.map((name: string) => (
-            <div key={name} className="registerContainer">
-              <label>{name}</label>
-              <input size={inputSize} type="text" className="register" value={ps.state.registers[name]} onChange={onRegisterChange.bind(name)} />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-    <div className="peripherals">
-      <textarea className="lcd" placeholder="Output LCD" value={ps.state.peripherals.lcdOutput} readOnly></textarea>
+        <div className="buttons">
+          <button type="button" onClick={onStepClick} title="Step"><span className="toolbarLabel">Step </span><i className="las la-shoe-prints"></i></button>
+          <button type="button" onClick={onNextClick} title="Next"><span className="toolbarLabel">Next </span><i className="las la-step-forward"></i></button>
 
-      {ps.state.peripherals.audioBuffer && ps.state.peripherals.audioBuffer.length > 0 && (
-        <div className="sounds">
-          Audio Buffer:
-          <pre>{
-            ps.state.peripherals.audioBuffer && ps.state.peripherals.audioBuffer.join(" ")
-          }</pre>
-          <button type="button" className="playAudio" onClick={playAudio}>{audioPlayer === null ? "Play" : "Stop"}</button>
+          <button type="button" onClick={onRunClick} title="Run" disabled={runtime}><span className="toolbarLabel">Run </span><i className="las la-play"></i></button>
+          <button type="button" onClick={onRunFastClick} title="Run Faster" disabled={runtime}><span className="toolbarLabel">Run Faster </span><i className="las la-fast-forward"></i></button>
+          <button type="button" onClick={onRunFastestClick} title="Run Fastest" disabled={runtime}><span className="toolbarLabel">Sprint </span><i className="las la-fighter-jet"></i></button>
+
+          <button type="button" onClick={onStopClick} title="Stop" disabled={!runtime}><span className="toolbarLabel">Stop </span><i className="las la-stop"></i></button>
+
+          <button type="button" onClick={onResetClick}><span className="toolbarLabel">Clear </span><i className="las la-backspace"></i></button>
         </div>
-      )}
-      {ps.state.peripherals.pixelUpdates > 0 && (
-        <PixelDisplayOutput width={256} height={256} pixels={ps.state.peripherals.pixels} pixelUpdates={ps.state.peripherals.pixelUpdates} />
-      )}
+      </div>
+      <div className="codePanel">
+        <CodeInput ps={ps} highlight={highlight} text={code} onChange={onCodeChange} />
+        {error && (<div className="errorStatus">{error}</div>)}
+        <div className="uploadRow">
+          <button type="button" className="uploadButton" onClick={onAssembleClick}>Upload <i className="las la-file-upload"></i></button>
+          {ps.processor.registerNames.includes("PORT") && <GamePad onButtonDown={onButtonDown} onButtonUp={onButtonUp} />}
+        </div>
+      </div>
     </div>
-    <div className="instructionSet">
-      <span className="isTitle">Instruction Set:</span>
-      <table>
-        <thead>
-          <tr>
-            <th className="isNo">No.</th>
-            <th className="isMnem">Mnemonic</th>
-            <th className="isIpInc">IP Increment</th>
-            <th className="isDesc">Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.keys(ps.processor.instructions).map((num: string) => (
-            <tr key={num}>
-              <td>{num}</td>
-              <td>{ps.processor.instructions[Number(num)].mnemonic}</td>
-              <td>{ps.processor.instructions[Number(num)].ipIncrement}</td>
-              <td>{ps.processor.instructions[Number(num)].description}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="microprocessor" style={{ marginTop: floatingHeight + "px" }}>
+      <div className="underTheHood">
+        <div className="status">
+          <div className="stepName">{statusLabels[ps.state.pipelineStep]}</div>
+          <div className="cycleNumber">Cycle: <strong>{ps.state.executionStep}</strong></div>
+          <div className="haltedStatus">{ps.state.isHalted && "Halted"}</div>
+        </div>
+        <div className="registersPanel">
+          <span>Registers:</span>
+          <div className="registers">
+            {ps.processor.registerNames.map((name: string) => (
+              <div key={name} className={`registerContainer register-${name}`}>
+                <div><label>{name}</label></div>
+                <input size={inputSize} type="text" className="register" value={ps.state.registers[name]} onChange={onRegisterChange.bind(name)} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="memoryPanel">
+          <span>Memory:</span>
+          <div className={`memory ${memoryBitClass}`}>
+            {ps.state.memory
+              .filter((_, index) => index < ps.processor.numMemoryAddresses)
+              .map((value, address) => (
+                <div key={address} className={memoryContainerClass(address)}>
+                  <div className="memoryIcons">{memoryIcons(address)}</div>
+                  <div><label>{address}</label></div>
+                  <input size={inputSize} type="text" className="memoryCell" value={value} onChange={onMemoryChange.bind(address)} />
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+      <div className="peripherals" onKeyDown={onKeyDown} onKeyUp={onKeyUp}>
+        {supportsLcd(ps) && (<textarea className="lcd" placeholder="Output LCD" value={ps.state.peripherals.lcdOutput} readOnly></textarea>)}
+        {supportsAudio(ps) && (
+          ps.state.peripherals.audioBuffer && ps.state.peripherals.audioBuffer.length > 0 && (
+            <div className="sounds">
+              Audio Buffer:
+              <pre>{
+                ps.state.peripherals.audioBuffer && ps.state.peripherals.audioBuffer.join(" ")
+              }</pre>
+              <button type="button" className="playAudio" onClick={playAudio}>{audioPlayer === null ? "Play" : "Stop"}</button>
+            </div>
+          )
+        )}
+
+        <div>
+          {supportsPixels(ps) && ps.state.peripherals.pixelUpdates > 0 && (
+            <PixelDisplayOutput width={256} height={256} pixels={ps.state.peripherals.pixels} pixelUpdates={ps.state.peripherals.pixelUpdates} />
+          )}
+        </div>
+        {supportsRobot(ps) && (
+          <RobotDisplay state={ps.state.peripherals} width={32} height={32} gridSize={16} />
+        )}
+      </div>
+      <InstructionSet processor={processor} />
     </div>
   </div>;
 };

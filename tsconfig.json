@@ -8,7 +8,9 @@
     "module": "es6",
     "target": "es5",
     "jsx": "react",
+    "lib": ["DOM","es2020"],
     "allowJs": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "downlevelIteration": true
   }
 }
