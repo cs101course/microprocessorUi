@@ -1,5 +1,5 @@
-import { Robot, RobotPeripheral } from "@cs101/microprocessor/dist/peripherals/robot";
-import { Speaker, SpeakerPeripheral } from "@cs101/microprocessor/dist/peripherals/speaker";
+import { RobotJourney, RobotPeripheral } from "../peripherals/robot";
+import { Speaker, SpeakerPeripheral } from "../peripherals/speaker";
 import { ProcessorState as State } from "@cs101/microprocessor/dist/state";
 
 import { Processor } from "@cs101/microprocessor/dist/types";
@@ -7,7 +7,7 @@ import { Processor } from "@cs101/microprocessor/dist/types";
 const robot = new RobotPeripheral();
 const speaker = new SpeakerPeripheral();
 
-export const processor: Processor<Robot & Speaker> = {
+export const processor: Processor<RobotJourney & Speaker> = {
   name: "Prototype 4-Bit Robot III",
   memoryBitSize: 4,
   registerBitSize: 4,

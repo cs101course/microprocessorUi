@@ -1,4 +1,4 @@
-import { Lcd, LcdPeripheral } from "@cs101/microprocessor/dist/peripherals/lcd";
+import { Lcd, LcdPeripheral } from "../peripherals/lcd";
 import { ProcessorState as State } from "@cs101/microprocessor/dist/state";
 
 import { Processor } from "@cs101/microprocessor/dist/types";

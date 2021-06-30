@@ -39,7 +39,14 @@ export const App = ({
   const [error, setError] = useState<string | null>(null);
   const [ps, dispatch] = useReducer(reduceState, {}, () => newProcessorState(processors[processorIndex]));
 
+  const [isRobotRunning, setIsRobotRunning] = useState<boolean>(false);
+  const [isRobotMoving, setIsRobotMoving] = useState<boolean>(false);
+  const [prevRobotStep, setPrevRobotStep] = useState(0);
+  const [robotRunner, setRobotRunner] = useState<NodeJS.Timeout | null>(null);
+
   const processor = processors[processorIndex];
+
+  const robotStep = supportsRobot(ps) ? ps.state.peripherals.numRobotSteps : 1;
 
   useEffect(() => {
     if (ps.state.isHalted && runtime) {
@@ -47,17 +54,50 @@ export const App = ({
     }
   }, [runtime, ps]);
 
+  // clean up
+  useEffect(() => {
+    return () => stopRunning(runtime);
+  }, [runtime]);
+
+  useEffect(() => {
+    if (supportsRobot(ps)) {
+      if (prevRobotStep !== robotStep) {
+        robotRunner && clearTimeout(robotRunner);
+        // step added, move robot
+        setPrevRobotStep(robotStep);
+        setIsRobotMoving(true);
+      } else {
+        setRobotRunner(
+          setTimeout(() => {
+            onRobotStepComplete();
+          }, 10)
+        );
+      }
+    }
+  }, [ps.state.executionStep]);
+
+  const resetRuntime = () => {
+    if (!supportsRobot(ps)) {
+      setRuntime(stopRunning(runtime));
+    } else {
+      setPrevRobotStep(0);
+      setIsRobotRunning(false);
+      setIsRobotMoving(false);
+    }
+  };
+
   const onCodeChange = (text: string) => {
     setCode(text);
     setSourceMap({});
   };
 
   const onAssembleClick = () => {
+    resetRuntime();
+
     try {
       const program = assemble(processor, code);
       const programSourceMap = getSourceMap(code);
 
-      setRuntime(stopRunning(runtime));
       setSourceMap(programSourceMap);
       dispatch({
         name: "setProgram",
@@ -70,22 +110,40 @@ export const App = ({
   };
 
   const onResetClick = () => {
-    setRuntime(stopRunning(runtime));
+    resetRuntime();
     dispatch("reset");
   };
 
   const onStepClick = () => {
     setRuntime(stopRunning(runtime));
+    setIsRobotRunning(false);
     dispatch("step");
   };
 
   const onNextClick = () => {
     setRuntime(stopRunning(runtime));
+    setIsRobotRunning(false);
     dispatch("next");
   };
 
   const onStopClick = () => {
     setRuntime(stopRunning(runtime));
+    setIsRobotRunning(false);
+  };
+
+  const onRunRobotClick = () => {
+    setIsRobotRunning(true);
+    setIsRobotMoving(false);
+    dispatch("next");
+  };
+
+  const onRobotStepComplete = () => {
+    if (supportsRobot(ps)) {
+      if (isRobotRunning && !ps.state.isHalted) {
+        dispatch("next");
+      }
+      setIsRobotMoving(false);
+    }
   };
 
   const onRunFastestClick = () => {
@@ -104,7 +162,7 @@ export const App = ({
         }
       ));
     } else {
-      setRuntime(stopRunning(runtime));
+      resetRuntime();
     }
   };
 
@@ -124,7 +182,7 @@ export const App = ({
         }
       ));
     } else {
-      setRuntime(stopRunning(runtime));
+      resetRuntime();
     }
   };
 
@@ -141,7 +199,7 @@ export const App = ({
         }
       ));
     } else {
-      setRuntime(stopRunning(runtime));
+      resetRuntime();
     }
   };
 
@@ -159,11 +217,6 @@ export const App = ({
       );
     }
   };
-
-  // clean up
-  useEffect(() => {
-    return () => stopRunning(runtime);
-  }, [runtime]);
 
   const onRegisterChange = function (evt: React.ChangeEvent<HTMLInputElement>) {
     dispatch({
@@ -309,14 +362,25 @@ export const App = ({
           </select>
         </div>
         <div className="buttons">
-          <button type="button" onClick={onStepClick} title="Step"><span className="toolbarLabel">Step </span><i className="las la-shoe-prints"></i></button>
-          <button type="button" onClick={onNextClick} title="Next"><span className="toolbarLabel">Next </span><i className="las la-step-forward"></i></button>
+          { supportsRobot(ps) ? (
+            <>
+              <button type="button" onClick={onStepClick} title="Step" disabled={isRobotRunning || isRobotMoving}><span className="toolbarLabel">Step </span><i className="las la-shoe-prints"></i></button>
+              <button type="button" onClick={onNextClick} title="Next" disabled={isRobotRunning || isRobotMoving}><span className="toolbarLabel">Next </span><i className="las la-step-forward"></i></button>
+              <button type="button" onClick={onRunRobotClick} title="Run" disabled={isRobotRunning || isRobotMoving}><span className="toolbarLabel">Run </span><i className="las la-play"></i></button>
+              <button type="button" onClick={onStopClick} title="Stop" disabled={!isRobotRunning}><span className="toolbarLabel">Stop </span><i className="las la-stop"></i></button>
+            </>
+          ) : (
+            <>
 
-          <button type="button" onClick={onRunClick} title="Run" disabled={runtime}><span className="toolbarLabel">Run </span><i className="las la-play"></i></button>
-          <button type="button" onClick={onRunFastClick} title="Run Faster" disabled={runtime}><span className="toolbarLabel">Run Faster </span><i className="las la-fast-forward"></i></button>
-          <button type="button" onClick={onRunFastestClick} title="Run Fastest" disabled={runtime}><span className="toolbarLabel">Sprint </span><i className="las la-fighter-jet"></i></button>
+              <button type="button" onClick={onStepClick} title="Step"><span className="toolbarLabel">Step </span><i className="las la-shoe-prints"></i></button>
+              <button type="button" onClick={onNextClick} title="Next"><span className="toolbarLabel">Next </span><i className="las la-step-forward"></i></button>
+              <button type="button" onClick={onRunClick} title="Run" disabled={runtime}><span className="toolbarLabel">Run </span><i className="las la-play"></i></button>
+              <button type="button" onClick={onRunFastClick} title="Run Faster" disabled={runtime}><span className="toolbarLabel">Run Faster </span><i className="las la-fast-forward"></i></button>
+              <button type="button" onClick={onRunFastestClick} title="Run Fastest" disabled={runtime}><span className="toolbarLabel">Sprint </span><i className="las la-fighter-jet"></i></button>  
 
-          <button type="button" onClick={onStopClick} title="Stop" disabled={!runtime}><span className="toolbarLabel">Stop </span><i className="las la-stop"></i></button>
+              <button type="button" onClick={onStopClick} title="Stop" disabled={!runtime}><span className="toolbarLabel">Stop </span><i className="las la-stop"></i></button>
+            </>
+          )}
 
           <button type="button" onClick={onResetClick}><span className="toolbarLabel">Clear </span><i className="las la-backspace"></i></button>
         </div>
@@ -378,13 +442,21 @@ export const App = ({
           )
         )}
 
-        <div>
+        <div className="pixelDisplayContainer">
           {supportsPixels(ps) && ps.state.peripherals.pixelUpdates > 0 && (
             <PixelDisplayOutput width={256} height={256} pixels={ps.state.peripherals.pixels} pixelUpdates={ps.state.peripherals.pixelUpdates} />
           )}
         </div>
         {supportsRobot(ps) && (
-          <RobotDisplay state={ps.state.peripherals} width={32} height={32} gridSize={16} />
+          <RobotDisplay
+            states={ps.state.peripherals.robotStates}
+            step={robotStep}
+            isMoving={isRobotMoving}
+            width={16}
+            height={16}
+            gridSize={32}
+            onStepComplete={onRobotStepComplete}
+          />
         )}
       </div>
       <InstructionSet processor={processor} />

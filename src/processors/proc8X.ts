@@ -1,7 +1,7 @@
-import { Fire, FirePeripheral } from "@cs101/microprocessor/dist/peripherals/fire";
-import { Lcd, LcdPeripheral } from "@cs101/microprocessor/dist/peripherals/lcd";
-import { PixelDisplay, PixelDisplayPeripheral } from "@cs101/microprocessor/dist/peripherals/pixelDisplay";
-import { Speaker, SpeakerPeripheral } from "@cs101/microprocessor/dist/peripherals/speaker";
+import { Fire, FirePeripheral } from "../peripherals/fire";
+import { Lcd, LcdPeripheral } from "../peripherals/lcd";
+import { PixelDisplay, PixelDisplayPeripheral } from "../peripherals/pixelDisplay";
+import { Speaker, SpeakerPeripheral } from "../peripherals/speaker";
 import { ProcessorState as State } from "@cs101/microprocessor/dist/state";
 
 import { Instruction, Processor } from "@cs101/microprocessor/dist/types";

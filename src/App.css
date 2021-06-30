@@ -247,14 +247,6 @@ html, body {
   max-width: 640px;
 }
 
-.pixelDisplay {
-  margin: 0;
-  padding: 0;
-  margin-top: 16px;
-  margin-left: 64px;
-  margin-right: 64px;
-  border: 1px solid #888;
-}
 
 .sounds pre {
   max-width: 640px;
@@ -350,12 +342,32 @@ html, body {
   right: 2px;
 }
 
+.pixelDisplayContainer, .robotContainer {
+  width: 640px;
+  text-align: center;
+}
+
+.pixelDisplay, .robotContainer canvas {
+  display: inline-block;
+  margin: 6px;
+  padding: 0;
+  border: 1px solid #888;
+}
+
+.robotContainer button {
+  cursor: pointer;
+}
+
 @media screen and (max-width: 640px) {
   .toolbarLabel {
     display: none;
   }
 
   .lcd {
+    width: 100%;
+  }
+
+  .pixelDisplayContainer, .robotContainer {
     width: 100%;
   }
 }

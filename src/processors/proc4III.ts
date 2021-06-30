@@ -1,5 +1,5 @@
-import { Lcd, LcdPeripheral } from "@cs101/microprocessor/dist/peripherals/lcd";
-import { Speaker, SpeakerPeripheral } from "@cs101/microprocessor/dist/peripherals/speaker";
+import { Lcd, LcdPeripheral } from "../peripherals/lcd";
+import { Speaker, SpeakerPeripheral } from "../peripherals/speaker";
 import { ProcessorState as State } from "@cs101/microprocessor/dist/state";
 
 import { Processor } from "@cs101/microprocessor/dist/types";
