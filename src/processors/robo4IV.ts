@@ -8,7 +8,7 @@ const robot = new RobotPeripheral();
 const speaker = new SpeakerPeripheral();
 
 export const processor: Processor<RobotJourney & Speaker> = {
-  name: "Prototype 4-Bit Robot IV",
+  name: "4-Bit Robot IV",
   memoryBitSize: 4,
   registerBitSize: 4,
   numMemoryAddresses: 16,
