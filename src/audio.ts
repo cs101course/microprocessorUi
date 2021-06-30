@@ -12,7 +12,7 @@ const getNote = (value: number) => {
         return null;
     } else if (value < offset) {
         const instruments = [
-            0, 2, 3, 5, 8, 10, 13, 15, 17, 19, 20, 23, 25, 26, 45
+            25, 26, 0, 2, 3, 5, 8, 10, 13, 15, 17, 19, 20, 23, 45
         ];
         instrument = 128 + instruments[value - 1];
         pitch = 60;

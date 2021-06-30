@@ -7,7 +7,7 @@ export type Speaker = {
 
 export type AudioHandler = (pitch: number, length: number) => void;
 
-const DEFAULT_PITCH = 128;
+const DEFAULT_PITCH = 1;
 
 export class SpeakerPeripheral implements Peripheral<Speaker> {
   reset(state: Speaker) {
