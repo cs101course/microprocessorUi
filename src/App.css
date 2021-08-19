@@ -1,24 +1,37 @@
-html, body {
+@font-face {
+  font-family: "LCDDot TR";
+  src: url("./fonts/LCDDot-TR.generated.eot") format("eot"),
+    url("./fonts/LCDDot-TR.generated.ttf") format("truetype"),
+    url("./fonts/LCDDot-TR.generated.woff") format("woff"),
+    url("./fonts/LCDDot-TR.generated.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+
+html,
+body {
   margin: 0;
   padding: 0;
 }
 
+body {
+  overflow-x: hidden;
+}
+
 .memory8bit {
   display: grid;
-  grid-template-columns: repeat(8, minmax(74px, 1fr));  
+  grid-template-columns: repeat(8, minmax(74px, 1fr));
 }
 
 .memory4bit {
   display: grid;
-  grid-template-columns: repeat(4, minmax(74px, 1fr));  
+  grid-template-columns: repeat(4, 56px);
 }
 
 .memory {
   font-family: Consolas, Lucida Console, monospace;
   max-height: 400px;
   overflow: auto;
-  border-top: 1px solid #aaa;
-  border-left: 1px solid #aaa;
 }
 
 .memory8bit > div:nth-child(16n + 9),
@@ -28,8 +41,7 @@ html, body {
 .memory8bit > div:nth-child(16n + 13),
 .memory8bit > div:nth-child(16n + 14),
 .memory8bit > div:nth-child(16n + 15),
-.memory8bit > div:nth-child(16n + 16)
-{
+.memory8bit > div:nth-child(16n + 16) {
   background-color: #fff;
 }
 
@@ -38,10 +50,15 @@ html, body {
   display: flex;
   flex-wrap: wrap;
 
-  border-left: 1px solid #ccc;
+  border-left: 1px solid rgb(92, 98, 130);
 }
 
-.memory label, .registers label {
+.micro4bit .registers {
+  width: 222px;
+}
+
+.memory label,
+.registers label {
   font-size: 0.75rem;
 }
 
@@ -52,24 +69,46 @@ html, body {
   font-size: 14px;
 }
 
-.memoryPanel, .registersPanel {
+.micro4bit .memoryIcons {
+  height: 20px;
+}
+
+.memoryPanel,
+.registersPanel {
   display: block;
   padding: 12px;
 }
 
-.memoryPanel span, .registersPanel span {
+.micro4bit .memory,
+.registerContainer {
+  background-color: #eee;
+}
+
+.memoryPanel span,
+.registersPanel span {
   font-family: Consolas, Lucida Console, monospace;
 }
 
-.memoryContainer, .registerContainer {
+.memoryContainer,
+.registerContainer {
   padding: 4px;
 
-  border-right: 1px solid #ccc;
-  border-bottom: 1px solid #ccc;
+  border-right: 1px solid rgb(92, 98, 130);
+  border-bottom: 1px solid rgb(92, 98, 130);
+}
+
+.memory8bit .memoryContainer:nth-child(8n + 1),
+.memory4bit .memoryContainer:nth-child(4n + 1) {
+  border-left: 1px solid rgb(92, 98, 130);
+}
+
+.memory8bit .memoryContainer:nth-child(-n + 8),
+.memory4bit .memoryContainer:nth-child(-n + 4) {
+  border-top: 1px solid rgb(92, 98, 130);
 }
 
 .registerContainer {
-  border-top: 1px solid #ccc;
+  border-top: 1px solid rgb(92, 98, 130);
   min-width: 65px;
 }
 
@@ -80,9 +119,9 @@ html, body {
   border: 2px solid #888;
   background-color: #364;
   color: #eee;
-  font-family: monospace;
-  font-size: 18px;
-  line-height: 24px;
+  font-family: "LCDDot TR", monospace;
+  font-size: 45px;
+  line-height: 29px;
 }
 .lcd:focus {
   outline: 1px solid #eee;
@@ -94,18 +133,8 @@ html, body {
   resize: vertical;
   padding: 6px;
   padding-bottom: 12px;
-  background-color: #eee;
   box-sizing: border-box;
-  border-bottom: 1px solid #888;
-  border-left: 1px solid #888;
-  border-right: 1px solid #888;
   max-height: 300px;
-}
-
-.uploadButton {
-  height: 40px;
-  padding-left: 12px;
-  padding-right: 12px;
 }
 
 .code {
@@ -136,10 +165,6 @@ html, body {
   color: #444;
 }
 
-.codePanel {
-  background-color: white;
-}
-
 .codePanel button {
   margin: 6px;
   margin-left: 4px;
@@ -147,37 +172,106 @@ html, body {
 }
 
 .underTheHood {
-  border: 1px solid #666;
-  background-color: #eee;
-  margin-top: 40px;
   max-width: 640px;
   box-sizing: border-box;
+}
+
+.micro8bit .underTheHood {
+  border: 1px solid #666;
+  background-color: #eee;
+}
+
+.micro4bit {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  overflow: auto;
+}
+
+@media (min-width: 768px) {
+  .micro4bit {
+    overflow: hidden;
+  }
+}
+
+.overlay {
+  position: absolute;
+  z-index: 10;
+  background: rgb(255, 255, 255, 0.7);
+  border: 2px solid #eee;
+  top: 88px;
+  left: 4px;
+  border-radius: 4px;
+}
+
+.no-overlay {
+  margin-top: 8px;
+}
+
+.peripherals {
+  margin-top: 8px;
+}
+
+.topSection {
+  background-color: rgb(205, 209, 228);
+  box-shadow: 3px 3px rgb(92 98 130);
+  border: 1px solid rgb(200, 200, 230);
 }
 
 .toolbar {
   width: 100%;
   padding: 0;
   margin: 0;
-  background-color: #eee;
-  
+
   box-sizing: border-box;
-  border-top: 1px solid #888;
-  border-left: 1px solid #888;
-  border-right: 1px solid #888;
+
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 .toolbar .buttons {
   display: flex;
-  max-width: 640px;
   flex-wrap: wrap;
 }
 
 .toolbar .buttons button {
-  margin-left: 2px;
-  margin-right: 2px;
+  margin-left: 4px;
+  margin-right: 4px;
+  margin-top: 2px;
+  margin-bottom: 2px;
   cursor: pointer;
   height: 40px;
   flex: 1;
+  border: 0.1em solid rgb(92, 98, 130);
+  color: #fff;
+  background-color: rgb(114, 123, 163);
+  box-sizing: border-box;
+  box-shadow: 3px 3px rgb(92 98 130), 2px 2px rgb(92 98 130),
+    1px 1px rgb(92 98 130);
+}
+
+.toolbar .buttons button:hover {
+  color: #fff;
+  background-color: rgb(133, 141, 177);
+}
+
+.toolbar .buttons button:active {
+  margin-right: 2px;
+  margin-left: 6px;
+  margin-top: 4px;
+  margin-bottom: 0px;
+  background-color: rgb(114, 123, 163);
+  box-shadow: 1px 1px rgb(92 98 130), 1px 1px rgb(92 98 130);
+}
+
+.toolbar .buttons button:disabled {
+  background-color: rgb(133, 141, 177);
+  margin-left: 4px;
+  margin-right: 4px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  box-shadow: 3px 3px rgb(92 98 130), 2px 2px rgb(92 98 130),
+    1px 1px rgb(92 98 130);
 }
 
 .toolbar .buttons button i {
@@ -186,20 +280,26 @@ html, body {
   margin: 2px;
 }
 
-.uploadButton i {
-  font-size: 18px;
-}
-
 .status {
   display: inline-block;
-  padding-left: 20px;
   font-family: monospace;
+  width: 100%;
 }
 
-.status div {
+.status .statusItem {
   display: inline-block;
   padding: 0;
-  padding-left: 20px;
+  margin-left: 20px;
+  padding: 4px;
+}
+
+.haltedStatus {
+  display: block;
+  background-color: #fcc;
+  width: 100%;
+  text-align: center;
+  padding: 4px;
+  box-sizing: border-box;
 }
 
 .chooseProcessor {
@@ -210,6 +310,7 @@ html, body {
 .instructionSet {
   padding-top: 32px;
   font-family: monospace;
+  width: 100%;
 }
 
 .isTitle {
@@ -224,9 +325,18 @@ html, body {
   width: 100%;
 }
 
-.instructionSet table { border: none; border-collapse: collapse; }
-.instructionSet table td { border-left: 1px solid #666; padding-left: 6px; padding-right: 6px;}
-.instructionSet table td:first-child { border-left: none; }
+.instructionSet table {
+  border: none;
+  border-collapse: collapse;
+}
+.instructionSet table td {
+  border-left: 1px solid #666;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.instructionSet table td:first-child {
+  border-left: none;
+}
 .instructionSet table tr:nth-child(2n + 1) {
   background-color: #eee;
 }
@@ -237,16 +347,13 @@ html, body {
   padding-right: 6px;
 }
 
-
-
-
 .sounds {
   font-family: monospace;
   border: 1px solid #eee;
   margin-top: 16px;
   max-width: 640px;
+  padding: 4px;
 }
-
 
 .sounds pre {
   max-width: 640px;
@@ -258,15 +365,18 @@ html, body {
   cursor: pointer;
 }
 
-.memoryContainerBp, .register-BP {
+.memoryContainerBp,
+.register-BP {
   background-color: pink !important;
 }
 
-.memoryContainerSp, .register-SP {
+.memoryContainerSp,
+.register-SP {
   background-color: rgb(255, 255, 151) !important;
 }
 
-.memoryContainerIp, .register-IP {
+.memoryContainerIp,
+.register-IP {
   background-color: lightblue !important;
 }
 
@@ -274,31 +384,19 @@ html, body {
   font-weight: bold;
 }
 
-.register, .memoryCell {
-  border: 1px solid #888;
+.register,
+.memoryCell {
+  border: 1px solid rgb(92, 98, 130);
   font-family: monospace;
   font-size: 16px;
 }
 
-.floatingSection {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 10;
-  width: 100%;
-}
-
-.uploadRow {
-  display: flex;
-  justify-content: space-between;
-}
-
 .gamePad {
   display: inline-block;
-  margin: 4px;
 }
 
-.leftPad, .rightPad {
+.leftPad,
+.rightPad {
   display: inline-block;
   position: relative;
   width: 54px;
@@ -306,52 +404,76 @@ html, body {
 .gamePad button {
   margin: 0;
   padding: 0;
+  border-bottom: 2px solid #666 !important;
+  border-right: 2px solid #666 !important;
+  border-radius: 30% !important;
+}
+.gamePad button:active {
+  border: none;
+}
+.gamePad .pad-w,
+.gamePad .pad-s,
+.gamePad .pad-ArrowUp,
+.gamePad .pad-ArrowDown {
+  width: 12px !important;
+  height: 14px !important;
 }
 
-.gamePad .pad-w, .gamePad .pad-s, .gamePad .pad-ArrowUp, .gamePad .pad-ArrowDown {
-  width: 12px;
-  height: 14px;
+.gamePad .pad-a,
+.gamePad .pad-d,
+.gamePad .pad-ArrowLeft,
+.gamePad .pad-ArrowRight {
+  width: 14px !important;
+  height: 12px !important;
 }
 
-.gamePad .pad-a, .gamePad .pad-d, .gamePad .pad-ArrowLeft, .gamePad .pad-ArrowRight {
-  width: 14px;
-  height: 12px;
-}
-
-.gamePad .pad-w, .gamePad .pad-ArrowUp {
+.gamePad .pad-w,
+.gamePad .pad-ArrowUp {
   position: absolute;
   top: 1px;
   right: 16px;
 }
 
-.gamePad .pad-a, .gamePad .pad-ArrowLeft {
+.gamePad .pad-a,
+.gamePad .pad-ArrowLeft {
   position: absolute;
   top: 15px;
   right: 28px;
 }
 
-.gamePad .pad-s, .gamePad .pad-ArrowDown {
+.gamePad .pad-s,
+.gamePad .pad-ArrowDown {
   position: absolute;
   top: 26px;
   right: 16px;
 }
 
-.gamePad .pad-d, .gamePad .pad-ArrowRight {
+.gamePad .pad-d,
+.gamePad .pad-ArrowRight {
   position: absolute;
   top: 15px;
   right: 2px;
 }
 
-.pixelDisplayContainer, .robotContainer {
+.pixelDisplayContainer {
   width: 640px;
   text-align: center;
 }
 
-.pixelDisplay, .robotContainer canvas {
+.robotContainer {
+  text-align: center;
+  width: 877px;
+  height: 857px;
+  min-width: 877px;
+  min-height: 857px;
+}
+
+.pixelDisplay,
+.robotContainer canvas {
   display: inline-block;
   margin: 6px;
   padding: 0;
-  border: 1px solid #888;
+  border: 2px solid #444;
 }
 
 .robotContainer button {
@@ -367,7 +489,56 @@ html, body {
     width: 100%;
   }
 
-  .pixelDisplayContainer, .robotContainer {
+  .pixelDisplayContainer,
+  .robotContainer {
     width: 100%;
   }
+}
+
+.button {
+  display: inline-block;
+  padding: 0.35em 1.2em;
+  border: 0.1em solid rgb(92, 98, 130);
+  margin: 0 0.3em 0.3em 0;
+  box-sizing: border-box;
+  text-decoration: none;
+  font-family: "Roboto", sans-serif;
+  font-weight: 400;
+  color: #444;
+  text-align: center;
+  transition: all 0.2s;
+  cursor: pointer;
+  background-color: rgb(220, 220, 238);
+}
+
+.button:hover {
+  color: #fff;
+  background-color: rgb(114, 123, 163);
+}
+
+.robotContainer {
+  background-image: url(./frame.png);
+  background-repeat: no-repeat;
+  background-size: contain;
+  position: relative;
+  left: 108px;
+}
+
+.robotDisplay {
+  cursor: move;
+  position: absolute;
+  top: 77px;
+  left: 167px;
+}
+
+.robotDragLabel {
+  position: relative;
+  top: 56px;
+  color: white;
+  font-family: monospace;
+}
+
+.robotToolbar {
+  position: relative;
+  top: 500px;
 }

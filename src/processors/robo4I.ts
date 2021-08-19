@@ -12,7 +12,7 @@ export const processor: Processor<RobotJourney & Speaker> = {
   memoryBitSize: 4,
   registerBitSize: 4,
   numMemoryAddresses: 16,
-  registerNames: ["IP", "IS", "R"],
+  registerNames: ["IP", "IS"],
   peripherals: [
     robot,
     speaker

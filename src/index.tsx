@@ -48,4 +48,6 @@ const processors8Bit: Array<Processor<SupportedPeripherals>> = [
 
 const allProcessors = robots4Bit.concat(processors4Bit).concat(processors8Bit);
 
+const processors = [robo4I, robo4II];//, robo4III];
+
 ReactDOM.render(<App processors={allProcessors} />, document.getElementById('root'));

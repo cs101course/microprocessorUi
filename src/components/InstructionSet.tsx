@@ -13,7 +13,7 @@ export const InstructionSet = <T,>({ processor }: InstructionSetProps<T>) => {
   const headers = {
     "number": (key: string) => <th className="isNo" key={key}>Op Code</th>,
     "mnemonic": (key: string) => <th className="isMnem" key={key}>Mnemonic</th>,
-    "increment": (key: string) => <th className="isIpInc" key={key}>{processor.memoryBitSize === 4 ? "Nibbles" : "Bytes"}</th>,
+    "increment": (key: string) => <th className="isIpInc" key={key}>Bytes</th>,
     "description": (key: string) => <th className="isDesc" key={key}>Description</th>,
     "code": (key: string) => <th className="isCode" key={key}>C (like) Equivalent</th>
   };

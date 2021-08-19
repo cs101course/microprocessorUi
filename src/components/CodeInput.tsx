@@ -90,7 +90,7 @@ export const CodeInput: React.FC<CodeInputProps> = ({ ps, text, highlight, onCha
   };
 
   return <div ref={divRef} className="codeContainer" onMouseUp={onMouseUp}>
-    Code Editor:
+    Machine Code Editor:
     <div ref={editorRef}>
       <Editor
         className="code"
