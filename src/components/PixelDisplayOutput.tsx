@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useEffect, useRef } from "react";
-import { Pixel } from "../peripherals/pixelDisplay";
+import { Pixel } from "@cs101/microprocessorexamples";
 
 export interface PixelDisplayProps {
   pixels: Array<Pixel>;

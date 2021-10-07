@@ -1,35 +1,64 @@
 import * as React from "react";
 import { useEffect, useRef, useState } from "react";
-import { Robot } from "../peripherals/robot";
+import { Robot } from "@cs101/microprocessorexamples";
 
 import dirt from "./dirt.png";
+import grass from "./grass.png";
 import robotI from "./robot-i.png";
 import robotII from "./robot-ii.png";
+import robotIV from "./robot-iv.png";
+import switchOff from "./switch-off.png";
+import switchOn from "./switch-on.png";
 
-const dirtImage = new Image();
-dirtImage.src = dirt;
+const backgroundImage = new Image();
+const robotImage = new Image();
+const switchOffImage = new Image();
+const switchOnImage = new Image();
+switchOffImage.src = switchOff;
+switchOnImage.src = switchOn;
 
+export interface World {
+  switches: Array<{ row: number, col: number, state: boolean }>;
+}
 interface RobotImageData {
   src: string;
+  scale: number;
+  backgroundSrc: string;
   offsetX: number;
   offsetY: number;
+  gridColor: string;
+  pathColor: string;
 }
 
 const robotImages: Record<string, RobotImageData> = {
-  "Prototype 4-Bit Robot I": {
+  "Robot I": {
     src: robotI,
+    scale: 1.0,
+    backgroundSrc: dirt,
     offsetX: 0,
     offsetY: 0,
+    gridColor: "#282",
+    pathColor: "#272",
   },
-  "Prototype 4-Bit Robot II": {
+  "Robot II": {
     src: robotII,
+    scale: 1.0,
+    backgroundSrc: dirt,
     offsetX: 4,
     offsetY: -11,
+    gridColor: "#282",
+    pathColor: "#272",
   },
+  "Robot IV": {
+    src: robotIV,
+    scale: 0.6,
+    backgroundSrc: grass,
+    offsetX: 15,
+    offsetY: 13,
+    gridColor: "#fff",
+    pathColor: "#eee",
+  }
 };
-
-const robotImage = new Image();
-
 interface PixelCoordinate {
   x: number;
   y: number;
@@ -97,6 +126,7 @@ interface RobotAnimationState {
   isMoving: boolean;
   onStepComplete?: () => void;
   robot: string;
+  switches: Array<{ row: number, col: number, state: boolean}>;
 }
 
 const drawBg = (
@@ -109,52 +139,30 @@ const drawBg = (
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width * gridSize, height * gridSize);
 
-  if (dirtImage.complete) {
-    ctx.drawImage(
-      dirtImage,
-      -pan.x % dirtImage.width,
-      -pan.y % dirtImage.height
-    );
-    ctx.drawImage(
-      dirtImage,
-      (-pan.x % dirtImage.width) - dirtImage.width,
-      -pan.y % dirtImage.height
-    );
-    ctx.drawImage(
-      dirtImage,
-      -pan.x % dirtImage.width,
-      (-pan.y % dirtImage.height) - dirtImage.height
-    );
-    ctx.drawImage(
-      dirtImage,
-      (-pan.x % dirtImage.width) + dirtImage.width,
-      -pan.y % dirtImage.height
-    );
-    ctx.drawImage(
-      dirtImage,
-      -pan.x % dirtImage.width,
-      (-pan.y % dirtImage.height) + dirtImage.height
-    );
-    ctx.drawImage(
-      dirtImage,
-      (-pan.x % dirtImage.width) + dirtImage.width,
-      (-pan.y % dirtImage.height) + dirtImage.height
-    );
-    ctx.drawImage(
-      dirtImage,
-      (-pan.x % dirtImage.width) - dirtImage.width,
-      (-pan.y % dirtImage.height) + dirtImage.height
-    );
-    ctx.drawImage(
-      dirtImage,
-      (-pan.x % dirtImage.width) + dirtImage.width,
-      (-pan.y % dirtImage.height) - dirtImage.height
-    );
-    ctx.drawImage(
-      dirtImage,
-      (-pan.x % dirtImage.width) - dirtImage.width,
-      (-pan.y % dirtImage.height) - dirtImage.height
-    );
+  const screenWidth = width * gridSize;
+  const screenHeight = height * gridSize;
+
+  if (backgroundImage.complete) {
+    const offsetX = -(pan.x % backgroundImage.width) - backgroundImage.width;
+    const offsetY = -(pan.y % backgroundImage.height) - backgroundImage.height;
+
+    const xCover = (screenWidth / backgroundImage.width) + 2;
+    const yCover = (screenHeight / backgroundImage.height) + 2;
+
+    let x = 0;
+    let y = 0;
+    while (y <= yCover * backgroundImage.height) {
+      x = 0;
+      while (x <= xCover * backgroundImage.width) {
+        ctx.drawImage(
+          backgroundImage,
+          x + offsetX,
+          y + offsetY
+        );
+        x += backgroundImage.width;
+      }
+      y += backgroundImage.height;
+    }
   }
 };
 
@@ -163,14 +171,15 @@ const drawGrid = (
   width: number,
   height: number,
   pan: PixelCoordinate,
-  gridSize: number
+  gridSize: number,
+  gridColor: string
 ) => {
   ctx.save();
   ctx.lineWidth = 0.5;
 
   const rowPanOffset = pan.x % gridSize;
   for (let col = 0; col <= width; col++) {
-    ctx.strokeStyle = "#282";
+    ctx.strokeStyle = gridColor;
     ctx.beginPath();
     ctx.moveTo(col * gridSize - rowPanOffset, 0);
     ctx.lineTo(col * gridSize - rowPanOffset, height * gridSize);
@@ -179,7 +188,7 @@ const drawGrid = (
 
   const colPanOffset = pan.y % gridSize;
   for (let row = 0; row <= height; row++) {
-    ctx.strokeStyle = "#282";
+    ctx.strokeStyle = gridColor;
     ctx.beginPath();
     ctx.moveTo(0, row * gridSize - colPanOffset);
     ctx.lineTo(width * gridSize, row * gridSize - colPanOffset);
@@ -235,7 +244,8 @@ const drawPath = (
   pan: PixelCoordinate,
   path: Array<Robot>,
   t: number,
-  gridSize: number
+  gridSize: number,
+  pathColor: string
 ) => {
   ctx.save();
   ctx.translate(-pan.x, -pan.y);
@@ -243,7 +253,7 @@ const drawPath = (
   ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.setLineDash([gridSize / 4, gridSize / 5]);
-  ctx.strokeStyle = "#272";
+  ctx.strokeStyle = pathColor;
 
   ctx.beginPath();
   path.forEach((robot, index) => {
@@ -281,13 +291,12 @@ const drawRobot = (
   t: number,
   gridSize: number,
   offsetX: number,
-  offsetY: number
+  offsetY: number,
+  scale: number
 ) => {
   if (!prevState && !nextState) {
     return;
   }
-
-  const robotWidth = gridSize * 0.8;
 
   let x: number, y: number;
   let theta: number;
@@ -316,45 +325,23 @@ const drawRobot = (
   ctx.translate(-pan.x, -pan.y);
   ctx.translate(x + gridSize / 2, y + gridSize / 2);
   ctx.rotate(theta + TAU * 0.25);
-  /*
-  // body
-  ctx.fillStyle = "#39a78e";
-  ctx.fillRect(-robotWidth/2, -robotWidth/2, robotWidth, robotWidth);
-  
-  ctx.lineWidth = 0.5;
-  ctx.strokeStyle = "black";
-  ctx.strokeRect(-robotWidth/2, -robotWidth/2, robotWidth, robotWidth);
 
-  // tracks
-  ctx.lineWidth = 5;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  const offset = (gridSize - robotWidth) / 4;
-  ctx.moveTo(-robotWidth/2 + offset, -robotWidth/2);
-  ctx.lineTo(-robotWidth/2 + offset, robotWidth/2);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(robotWidth/2 - offset, -robotWidth/2);
-  ctx.lineTo(robotWidth/2 - offset, robotWidth/2);
-  ctx.stroke();
-
-  // direction indicator
-  ctx.lineWidth = 0.5;
-  ctx.fillStyle = "white";
-  ctx.beginPath();
-  ctx.moveTo(-gridSize*0.2, -robotWidth/2 + gridSize * 0.2);
-  ctx.lineTo(0, -robotWidth/2);
-  ctx.lineTo(gridSize*0.2, -robotWidth/2 + gridSize * 0.2);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  */
   if (robotImage.complete) {
-    ctx.drawImage(robotImage, -robotImage.width / 2 + offsetX, -robotImage.height / 2 + offsetY);
+    ctx.drawImage(robotImage, -robotImage.width / 2 + offsetX, -robotImage.height / 2 + offsetY, robotImage.width * scale, robotImage.height * scale);
   }
 
+  ctx.restore();
+};
+
+const drawSwitches = (ctx: CanvasRenderingContext2D, width: number, height: number, pan: PixelCoordinate, switches: Array<{ row: number, col: number, state: boolean}>, gridSize: number) => {
+  ctx.save();
+  ctx.translate(-pan.x, -pan.y);
+
+  switches.forEach((switchValue) => {
+    const image = switchValue.state ? switchOnImage : switchOffImage;
+    ctx.drawImage(image, switchValue.col * gridSize - 2, switchValue.row * gridSize - 11, image.width/2, image.height/2);
+  });
+  
   ctx.restore();
 };
 
@@ -368,6 +355,7 @@ const updateWorld = (dt: number, animationState: RobotAnimationState) => {
   const nextState = animationState.states[animationState.step];
   const path = animationState.states.slice(0, animationState.step + 1);
   const robot = animationState.robot;
+  const switches = animationState.switches;
 
   // Update
   let t = animationState.t || 0;
@@ -397,11 +385,17 @@ const updateWorld = (dt: number, animationState: RobotAnimationState) => {
   const robotImageData = robotImages[robot];
 
   robotImage.src = robotImageData.src;
+  backgroundImage.src = robotImageData.backgroundSrc;
 
   ctx.save();
   drawBg(ctx, width, height, pan, gridSize);
-  drawGrid(ctx, width, height, pan, gridSize);
-  drawPath(ctx, pan, path, t, gridSize);
+  drawGrid(ctx, width, height, pan, gridSize, robotImageData.gridColor);
+  drawPath(ctx, pan, path, t, gridSize, robotImageData.pathColor);
+  
+  if (switches) {
+    drawSwitches(ctx, width, height, pan, switches, gridSize);
+  }
+
   drawRobot(
     ctx,
     pan,
@@ -410,8 +404,10 @@ const updateWorld = (dt: number, animationState: RobotAnimationState) => {
     t,
     gridSize,
     robotImageData.offsetX,
-    robotImageData.offsetY
+    robotImageData.offsetY,
+    robotImageData.scale
   );
+
   ctx.restore();
 };
 
@@ -424,8 +420,11 @@ export interface RobotDisplayProps {
   isMoving: boolean;
   onPanChange?: (pan: PixelCoordinate) => void;
   onStepComplete?: () => void;
+  onClick: (gridCell: { row: number, col: number }) => void;
   pan?: { x: number; y: number };
   robot: string;
+  world?: World;
+  initialPan?: { x: number; y: number};
 }
 
 const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
@@ -437,17 +436,27 @@ const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
   pan,
   onPanChange,
   onStepComplete,
+  onClick,
   isMoving,
   robot,
+  world,
+  initialPan
 }) => {
-  const initialPan = {
+  const canvasRef = useRef<HTMLCanvasElement>();
+  const centrePan = {
     x: -(width / 2) * gridSize + gridSize / 2,
     y: -(height / 2) * gridSize + gridSize / 2,
   };
-  const canvasRef = useRef<HTMLCanvasElement>();
-  const [lastDrag, setLastDrag] = useState<PixelCoordinate | null>(null);
-  const [internalPan, setInternalPan] = useState<PixelCoordinate>(initialPan);
 
+  // absolute coords
+  const [lastDrag, setLastDrag] = useState<PixelCoordinate | null>(null);
+
+  // element relative coords
+  const [lastMouse, setLastMouse] = useState<PixelCoordinate | null>(null);
+
+  const [internalPan, setInternalPan] = useState<PixelCoordinate>(initialPan || centrePan);
+  
+  const switches = world?.switches;
   const panCoord = pan || internalPan;
 
   const [animation, setAnimation] = useState<Animation<RobotAnimationState>>(
@@ -463,6 +472,7 @@ const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
         onStepComplete,
         isMoving,
         robot,
+        switches,
       };
 
       const animationRunner = new Animation(updateWorld, initialState);
@@ -500,6 +510,7 @@ const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
       onStepComplete,
       isMoving,
       robot,
+      switches,
     });
   }, [
     canvasRef.current,
@@ -511,6 +522,7 @@ const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
     panCoord,
     isMoving,
     onStepComplete,
+    switches
   ]);
 
   const updatePan = (x: number, y: number) => {
@@ -538,9 +550,9 @@ const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
 
   const resetPan = () => {
     if (onPanChange) {
-      onPanChange(initialPan);
+      onPanChange(initialPan || centrePan);
     } else {
-      setInternalPan(initialPan);
+      setInternalPan(initialPan || centrePan);
     }
 
     stopPan();
@@ -558,7 +570,7 @@ const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
   useEffect(() => {
     document.addEventListener("mouseup", stopPan);
     return () => {
-      document.removeEventListener("mosueup", stopPan);
+      document.removeEventListener("mouseup", stopPan);
     };
   });
 
@@ -567,6 +579,27 @@ const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
     const offsetX = evt.touches[0].pageX - currentTargetRect.left;
     const offsetY = evt.touches[0].pageY - currentTargetRect.top;
     startPan(offsetX, offsetY);
+    setLastMouse({
+      x: offsetX,
+      y: offsetY
+    });
+  };
+
+  const onTouchEnd = (evt: React.TouchEvent<HTMLCanvasElement>) => {
+    const currentTargetRect = evt.currentTarget.getBoundingClientRect();
+    const offsetX = evt.touches[0].pageX - currentTargetRect.left;
+    const offsetY = evt.touches[0].pageY - currentTargetRect.top;
+
+    const absoluteX = offsetX + panCoord.x;
+    const absoluteY = offsetY + panCoord.y;
+
+    if (lastMouse.x === offsetX && lastMouse.y === offsetY) {
+      onClick({
+        row: Math.floor(absoluteY / gridSize),
+        col: Math.floor(absoluteX / gridSize)
+      });
+    }
+    stopPan();
   };
 
   const onTouchMove = (evt: React.TouchEvent<HTMLCanvasElement>) => {
@@ -581,7 +614,28 @@ const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
     const offsetX = evt.pageX - currentTargetRect.left;
     const offsetY = evt.pageY - currentTargetRect.top;
     startPan(offsetX, offsetY);
+    setLastMouse({
+      x: offsetX,
+      y: offsetY
+    });
   };
+
+  const onMouseUp = (evt: React.MouseEvent<HTMLCanvasElement>) => {
+    const currentTargetRect = evt.currentTarget.getBoundingClientRect();
+    const offsetX = evt.pageX - currentTargetRect.left;
+    const offsetY = evt.pageY - currentTargetRect.top;
+
+    const absoluteX = offsetX + panCoord.x;
+    const absoluteY = offsetY + panCoord.y;
+
+    if (lastMouse.x === offsetX && lastMouse.y === offsetY) {
+      onClick({
+        row: Math.floor(absoluteY / gridSize),
+        col: Math.floor(absoluteX / gridSize)
+      });
+    }
+    stopPan();
+  }
 
   const onMouseMove = (evt: React.MouseEvent<HTMLCanvasElement>) => {
     const currentTargetRect = evt.currentTarget.getBoundingClientRect();
@@ -597,10 +651,10 @@ const UnmemoRobotDisplay: React.FC<RobotDisplayProps> = ({
         className="robotDisplay"
         ref={canvasRef}
         onTouchStart={onTouchStart}
-        onTouchEnd={stopPan}
+        onTouchEnd={onTouchEnd}
         onTouchMove={onTouchMove}
         onMouseDown={onMouseDown}
-        onMouseUp={stopPan}
+        onMouseUp={onMouseUp}
         onMouseMove={onMouseMove}
       />
       <div className="robotToolbar">

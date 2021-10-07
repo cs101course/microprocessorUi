@@ -1,9 +1,7 @@
 
-import { ProcessorState, Processor } from "@cs101/microprocessor";
-
-import { Processor as P, ProcessorState as PS } from "@cs101/microprocessor/dist/types";
+import { ProcessorState, Processor, P, PS } from "@cs101/microprocessor";
 import { playSound } from "./audio";
-import { SupportedPeripherals, supportsAudio } from "./types";
+import { SupportedPeripherals, supportsAudio } from "@cs101/microprocessorexamples";
 
 export interface Action {
   name: "step" | "reset" | "setRegister" | "setMemoryAddress" | "setProgram";

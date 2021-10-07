@@ -1,10 +1,7 @@
 import * as React from "react";
 import { useEffect, useReducer, useState } from "react";
 
-import { ProcessorState, assemble } from "@cs101/microprocessor";
-
-import { Processor as P } from "@cs101/microprocessor/dist/types";
-import { getSourceMap } from "@cs101/microprocessor/dist/assembler/assembler";
+import { ProcessorState, assemble, getSourceMap, Instruction, P, PS } from "@cs101/microprocessor";
 
 import "./fonts/LCDDot-TR.ttf";
 import "./App.css";
@@ -12,26 +9,66 @@ import "./App.css";
 import { playAudioBuffer } from "./audio";
 import { InstructionSet } from "./components/InstructionSet";
 import {
+  Action,
+  Coordinate,
   SupportedPeripherals,
   supportsAudio,
   supportsLcd,
   supportsPixels,
   supportsRobot,
-} from "./types";
+} from "@cs101/microprocessorexamples";
+
 import { CodeInput } from "./components/CodeInput";
 import { PixelDisplayOutput } from "./components/PixelDisplayOutput";
 import { startRunning, stopRunning } from "./runtime";
 import { newProcessorState, reduceState } from "./reducer";
 import { GamePad } from "./components/Gamepad";
-import { RobotDisplay } from "./components/Robot";
+import { RobotDisplay, World } from "./components/Robot";
 
 const statusLabels = ["Fetch", "Increment", "Execute"];
 
+export type Environment = World;
+
+const resolveSwitches = (environmentState: Environment, ps: PS<SupportedPeripherals>) => {
+  if (!environmentState || !environmentState.switches) {
+    return environmentState;
+  }
+
+  const peripherals = ps.state.peripherals as any;
+  if (!peripherals.actionLog) {
+    return environmentState;
+  }
+
+  const resolvedSwitches = environmentState.switches.map((switchValue) => ({...switchValue}));
+
+  peripherals.actionLog.forEach((action: Action<Coordinate>) => {
+    if (action.name === "flipSwitch") {
+      const row = action.data.row;
+      const col = action.data.column;
+
+      resolvedSwitches.forEach((switchValue) => {
+        if (row === switchValue.row && col === switchValue.col) {
+          // toggle switch
+          switchValue.state = !switchValue.state;
+        }
+      });
+    }
+  });
+  
+  return {
+    ...environmentState,
+    switches: resolvedSwitches
+  }
+};
+
 export interface AppProps {
   processors: Array<P<SupportedPeripherals>>;
+  instructionHeadings?: Array<Record<string, string>>;
+  environment?: Environment;
+  pan?: {x:number, y:number};
 }
 
-export const App = ({ processors }: AppProps) => {
+export const App = ({ processors, instructionHeadings, environment, pan }: AppProps) => {
   const [processorIndex, setProcessorIndex] = useState(processors.length - 1);
   const [code, setCode] = useState("");
   const [sourceMap, setSourceMap] = useState<Record<number, [number, number]>>(
@@ -43,15 +80,32 @@ export const App = ({ processors }: AppProps) => {
   const [ps, dispatch] = useReducer(reduceState, {}, () =>
     newProcessorState(processors[processorIndex])
   );
+  const [environmentState, setEnvironmentState] = useState<Environment>(environment);
 
   const [isRobotRunning, setIsRobotRunning] = useState<boolean>(false);
   const [isRobotMoving, setIsRobotMoving] = useState<boolean>(false);
   const [prevRobotStep, setPrevRobotStep] = useState(0);
   const [robotRunner, setRobotRunner] = useState<NodeJS.Timeout | null>(null);
+  const [hintInstruction, setHintInstruction] =
+    useState<Instruction<SupportedPeripherals> | null>(null);
+  const [hintOpCode, setHintOpCode] = useState<string | null>(null);
 
   const processor = processors[processorIndex];
 
   const robotStep = supportsRobot(ps) ? ps.state.peripherals.numRobotSteps : 1;
+
+  const isRobotWorldEnabled = processor.name === "Robot IV";
+  
+  const updateHint = () => {
+    const opCode = ProcessorState.getMemoryAddress(
+      ps,
+      ProcessorState.getIp(ps)
+    );
+    const instruction = ps.processor.instructions[opCode];
+
+    setHintInstruction(instruction);
+    setHintOpCode(opCode.toString());
+  };
 
   useEffect(() => {
     if (ps.state.isHalted && runtime) {
@@ -79,6 +133,10 @@ export const App = ({ processors }: AppProps) => {
         );
       }
     }
+
+    if (code !== "") {
+      updateHint();
+    }
   }, [ps.state.executionStep]);
 
   const resetRuntime = () => {
@@ -94,6 +152,27 @@ export const App = ({ processors }: AppProps) => {
   const onCodeChange = (text: string) => {
     setCode(text);
     setSourceMap({});
+  };
+
+  const onCodeClick = (word: string) => {
+    let instruction: Instruction<SupportedPeripherals>;
+    let opCode: string | null = null;
+    Object.entries(ps.processor.instructions).forEach(
+      ([currOpCode, currentInstruction]) => {
+        if (currentInstruction.mnemonic === word || currOpCode === word) {
+          instruction = currentInstruction;
+          opCode = currOpCode;
+        }
+      }
+    );
+
+    if (instruction) {
+      setHintInstruction(instruction);
+      setHintOpCode(opCode);
+    } else {
+      setHintInstruction(null);
+      setHintOpCode(null);
+    }
   };
 
   const onAssembleClick = () => {
@@ -122,12 +201,14 @@ export const App = ({ processors }: AppProps) => {
   const onStepClick = () => {
     setRuntime(stopRunning(runtime));
     setIsRobotRunning(false);
+
     dispatch("step");
   };
 
   const onNextClick = () => {
     setRuntime(stopRunning(runtime));
     setIsRobotRunning(false);
+
     dispatch("next");
   };
 
@@ -148,6 +229,53 @@ export const App = ({ processors }: AppProps) => {
         dispatch("next");
       }
       setIsRobotMoving(false);
+    }
+  };
+
+  const onRobotWorldClick = ({ row, col }: { row: number, col: number }) => {
+    if (!isRobotWorldEnabled || environment) {
+      return;
+    }
+
+    let newState;
+    if (environmentState) {
+      let indexToRemove = null;
+      let isPresent = false;
+      environmentState.switches.forEach(
+        (switchValue, index) => {
+          if (switchValue.row == row && switchValue.col == col) {
+            if (switchValue.state) {
+              indexToRemove = index;
+            } else {
+              switchValue.state = true;
+            }
+
+            isPresent = true;
+          }
+        }
+      );
+
+      if (!isPresent) {
+        // add a new switch
+        newState = [...environmentState.switches, {
+          row, col, state: false
+        }];
+      } else if (indexToRemove !== null) {
+        // remove a switch
+        newState = [...environmentState.switches];
+        newState.splice(indexToRemove, 1);
+      } else {
+        newState = [...environmentState.switches];
+      }
+
+      setEnvironmentState({
+        ...environmentState,
+        switches: newState
+      });
+    } else {
+      setEnvironmentState({
+        switches: [{ row, col, state: false}]
+      });
     }
   };
 
@@ -217,7 +345,10 @@ export const App = ({ processors }: AppProps) => {
       clearInterval(audioPlayer);
       setAudioPlayer(null);
     } else {
-      setAudioPlayer(playAudioBuffer(ps.state.peripherals.audioBuffer));
+      setAudioPlayer(playAudioBuffer(ps.state.peripherals.audioBuffer, () => {
+        clearInterval(audioPlayer);
+        setAudioPlayer(null);
+      }));
     }
   };
 
@@ -227,6 +358,12 @@ export const App = ({ processors }: AppProps) => {
       register: this,
       value: Number(evt.currentTarget.value),
     });
+  };
+
+  const onRegisterClick = function (evt: React.MouseEvent<HTMLInputElement>) {
+    if (this === "IS") {
+      updateHint();
+    }
   };
 
   const onMemoryChange = function (evt: React.ChangeEvent<HTMLInputElement>) {
@@ -383,6 +520,15 @@ export const App = ({ processors }: AppProps) => {
                 </option>
               ))}
             </select>
+            {hintInstruction && (
+              <div className="hint">
+                <div className="hintOpCode">{hintOpCode}:</div>
+                <div className="hintDesc">{hintInstruction.description}</div>
+                {hintInstruction.code && (
+                  <div className="hintCode">{hintInstruction.code}</div>
+                )}
+              </div>
+            )}
           </div>
         )}
         <div className="codePanel">
@@ -391,6 +537,7 @@ export const App = ({ processors }: AppProps) => {
             highlight={highlight}
             text={code}
             onChange={onCodeChange}
+            onClick={onCodeClick}
           />
           {error && <div className="errorStatus">{error}</div>}
         </div>
@@ -500,7 +647,11 @@ export const App = ({ processors }: AppProps) => {
         </div>
       </div>
       <div className={`microprocessor ${microprocessorClass}`}>
-        <div className={`underTheHood ${supportsRobot(ps) ? "overlay" : "no-overlay"}`}>
+        <div
+          className={`underTheHood ${
+            supportsRobot(ps) ? "overlay" : "small-overlay"
+          }`}
+        >
           <div className="status">
             {ps.state.isHalted && <div className="haltedStatus">Halted</div>}
             {!isRobotRunning &&
@@ -537,6 +688,7 @@ export const App = ({ processors }: AppProps) => {
                     className="register"
                     value={ps.state.registers[name]}
                     onChange={onRegisterChange.bind(name)}
+                    onClick={onRegisterClick.bind(name)}
                   />
                 </div>
               ))}
@@ -565,7 +717,7 @@ export const App = ({ processors }: AppProps) => {
             </div>
           </div>
         </div>
-        {supportsRobot(ps) && (
+        {supportsRobot(ps) ? (
           <RobotDisplay
             states={ps.state.peripherals.robotStates}
             step={robotStep}
@@ -574,50 +726,57 @@ export const App = ({ processors }: AppProps) => {
             height={13}
             gridSize={32}
             onStepComplete={onRobotStepComplete}
+            onClick={onRobotWorldClick}
             robot={processor.name}
+            world={isRobotWorldEnabled ? resolveSwitches(environmentState, ps) : undefined}
+            initialPan={pan}
           />
-        )}
-        <div className="peripherals" onKeyDown={onKeyDown} onKeyUp={onKeyUp}>
-          {supportsLcd(ps) && (
-            <textarea
-              className="lcd"
-              placeholder="Output LCD"
-              value={ps.state.peripherals.lcdOutput}
-              readOnly
-            ></textarea>
-          )}
-          {supportsAudio(ps) &&
-            ps.state.peripherals.audioBuffer &&
-            ps.state.peripherals.audioBuffer.length > 0 && (
-              <div className="sounds">
-                Audio Buffer:
-                <pre>
-                  {ps.state.peripherals.audioBuffer &&
-                    ps.state.peripherals.audioBuffer.join(" ")}
-                </pre>
-                <button
-                  type="button"
-                  className="playAudio button"
-                  onClick={playAudio}
-                >
-                  {audioPlayer === null ? "Play" : "Stop"}
-                </button>
+        ) : (
+          <div className="peripherals" onKeyDown={onKeyDown} onKeyUp={onKeyUp}>
+            {supportsLcd(ps) && (
+              <textarea
+                className="lcd"
+                placeholder="Output LCD"
+                value={ps.state.peripherals.lcdOutput}
+                readOnly
+              ></textarea>
+            )}
+            {supportsAudio(ps) &&
+              ps.state.peripherals.audioBuffer &&
+              ps.state.peripherals.audioBuffer.length > 0 && (
+                <div className="sounds">
+                  Audio Buffer:
+                  <pre>
+                    {ps.state.peripherals.audioBuffer &&
+                      ps.state.peripherals.audioBuffer.join(" ")}
+                  </pre>
+                  <button
+                    type="button"
+                    className="playAudio button"
+                    onClick={playAudio}
+                  >
+                    {audioPlayer === null ? "Play" : "Stop"}
+                  </button>
+                </div>
+              )}
+            {supportsPixels(ps) && (
+              <div className="pixelDisplayContainer">
+                {ps.state.peripherals.pixelUpdates > 0 && (
+                  <PixelDisplayOutput
+                    width={256}
+                    height={256}
+                    pixels={ps.state.peripherals.pixels}
+                    pixelUpdates={ps.state.peripherals.pixelUpdates}
+                  />
+                )}
               </div>
             )}
-          {supportsPixels(ps) && (
-            <div className="pixelDisplayContainer">
-              {ps.state.peripherals.pixelUpdates > 0 && (
-                <PixelDisplayOutput
-                  width={256}
-                  height={256}
-                  pixels={ps.state.peripherals.pixels}
-                  pixelUpdates={ps.state.peripherals.pixelUpdates}
-                />
-              )}
-            </div>
-          )}
-        </div>
-        <InstructionSet processor={processor} />
+          </div>
+        )}
+        <InstructionSet
+          processor={processor}
+          instructionHeadings={instructionHeadings[processorIndex]}
+        />
       </div>
     </div>
   );

@@ -55,7 +55,7 @@ export const playSound = (sound: number, duration=60/360) => {
     }
 };
 
-export const playAudioBuffer = (buffer: Array<number>, bpm=360) => {
+export const playAudioBuffer = (buffer: Array<number>, onEnd: () => void, bpm=360) => {
     const secInMin = 60;
     const duration = (secInMin/bpm);
 
@@ -63,6 +63,7 @@ export const playAudioBuffer = (buffer: Array<number>, bpm=360) => {
     const interval = setInterval(() => {
         if (index >= buffer.length) {
             clearInterval(interval);
+            onEnd();
             return;
         }
 

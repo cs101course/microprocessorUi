@@ -1,53 +1,28 @@
-import * as React from "react";
+import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
-
-import { processor as robo4I } from "./processors/robo4I";
-import { processor as robo4II } from "./processors/robo4II";
-import { processor as robo4III } from "./processors/robo4III";
-import { processor as robo4IV } from "./processors/robo4IV";
-
-import { processor as proc4I } from "./processors/proc4I";
-import { processor as proc4II } from "./processors/proc4II";
-import { processor as proc4III } from "./processors/proc4III";
-import { processor as proc4IV } from "./processors/proc4IV";
-import { processor as proc4V } from "./processors/proc4V";
-
-import { processor as proc8VI } from "./processors/proc8VI";
-import { processor as proc8VII } from "./processors/proc8VII";
-import { processor as proc8VIII } from "./processors/proc8VIII";
-import { processor as proc8IX } from "./processors/proc8IX";
-import { processor as proc8X } from "./processors/proc8X";
-
 import { App } from './App';
-import { Processor } from "@cs101/microprocessor/dist/types";
-import { SupportedPeripherals } from "./types";
+import { getHeadings, getProcessors } from '@cs101/microprocessorexamples';
 
-const robots4Bit: Array<Processor<SupportedPeripherals>> = [
-  robo4I,
-  robo4II,
-  robo4III,
-  robo4IV
-];
+const urlSearchParams = new URLSearchParams(window.location.search);
+const devicesParam = urlSearchParams.get('devices');
+const devices = devicesParam ? devicesParam.split(',') : null;
 
-const processors4Bit: Array<Processor<SupportedPeripherals>> = [
-  proc4I,
-  proc4II,
-  proc4III,
-  proc4IV,
-  proc4V
-];
 
-const processors8Bit: Array<Processor<SupportedPeripherals>> = [
-  proc8VI,
-  proc8VII,
-  proc8VIII,
-  proc8IX,
-  proc8X
-];
+const switchesParam = urlSearchParams.get("switches");
+const switches = switchesParam ? switchesParam.split(',').map((switchConfig) => {
+  const [col, row, isOn] = switchConfig.split('x');
+  return {
+    col: Number(col),
+    row: Number(row),
+    state: isOn === '1'
+  }
+}) : undefined;
 
-const allProcessors = robots4Bit.concat(processors4Bit).concat(processors8Bit);
+const panParam = urlSearchParams.get("pan");
+const pan = panParam ? panParam.split('x').map(Number) : undefined;
 
-const processors = [robo4I, robo4II];//, robo4III];
+const processors = getProcessors(devices);
+const headings = getHeadings(devices);
 
-ReactDOM.render(<App processors={allProcessors} />, document.getElementById('root'));
+ReactDOM.render(<App processors={processors} instructionHeadings={headings} environment={{ switches }} pan={pan ? { x: pan[0], y: pan[1] } : undefined}/>, document.getElementById('root'));

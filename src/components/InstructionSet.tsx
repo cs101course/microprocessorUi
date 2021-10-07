@@ -1,13 +1,14 @@
 import * as React from "react";
 
 
-import { Processor as P } from "@cs101/microprocessor/dist/types";
+import { P } from "@cs101/microprocessor";
 
 interface InstructionSetProps<T> {
   processor: P<T>;
+  instructionHeadings?: Record<string, string>;
 }
 
-export const InstructionSet = <T,>({ processor }: InstructionSetProps<T>) => {
+export const InstructionSet = <T,>({ processor, instructionHeadings }: InstructionSetProps<T>) => {
 
   const columns = processor.columns || ["number", "increment", "description"];
   const headers = {
@@ -29,15 +30,29 @@ export const InstructionSet = <T,>({ processor }: InstructionSetProps<T>) => {
     <span className="isTitle">Instruction Set:</span>
     <table>
       <thead>
-        <tr>
-          {columns.map((col, index) => headers[col](index.toString()))}
-        </tr>
+        { !instructionHeadings && (
+          <tr>
+            {columns.map((col, index) => headers[col](index.toString()))}
+          </tr>
+        ) }
       </thead>
       <tbody>
         {Object.keys(processor.instructions).map((num: string) => (
+          <>
+          { instructionHeadings && instructionHeadings[num] && ((
+            <>
+            <tr className="instructionGroupHeading" key={`heading-${num}`}>
+              <th colSpan={columns.length}>{instructionHeadings[num]}</th>
+            </tr>
+            <tr>
+              {columns.map((col, index) => headers[col](index.toString()))}
+            </tr>
+            </>
+          ))}
           <tr key={num}>
             {columns.map((col, index) => rows[col](num, index.toString()))}
           </tr>
+          </>
         ))}
       </tbody>
     </table>
